@@ -1,0 +1,12 @@
+# Transportation Configuration
+# Transportation preferences and mode settings
+
+transportation:
+  modes: ["driving", "walking", "transit"]  # modes to calculate
+  driving:
+    avoid_tolls: false
+    avoid_highways: false
+  transit:
+    include_costs: true
+  walking:
+    max_distance: 2.0         # miles - don't calculate walking beyond this

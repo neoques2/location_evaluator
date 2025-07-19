@@ -1,0 +1,13 @@
+# API Configuration
+# API keys and rate limiting settings
+
+apis:
+  google_maps:
+    api_key: ""
+    batch_size: 25                # requests per batch
+    rate_limit: 10                # requests per second
+    
+  # FBI Crime Data API (no key required)
+  fbi_crime:
+    base_url: "https://api.usa.gov/crime/fbi/cde/"
+    timeout: 30                   # seconds

@@ -1,0 +1,27 @@
+# Location Evaluator Dependencies
+# Core packages for the location analysis tool
+
+# Data processing and analysis
+requests>=2.31.0
+pyyaml>=6.0.1
+pandas>=2.1.0
+numpy>=1.25.0
+python-dateutil>=2.8.2
+
+# Geospatial and mapping
+geopy>=2.4.0
+plotly>=5.17.0
+
+# Progress bars and CLI utilities
+tqdm>=4.66.0
+click>=8.1.0
+
+# Development and testing (optional)
+pytest>=7.4.0
+pytest-cov>=4.1.0
+black>=23.7.0
+flake8>=6.0.0
+
+# Optional: Jupyter for data exploration
+jupyter>=1.0.0
+ipywidgets>=8.1.0

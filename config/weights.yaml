@@ -1,0 +1,7 @@
+# Analysis Weights Configuration
+# Weights for composite scoring (must sum to 1.0)
+
+weights:
+  travel_time: 0.4    # Weight for travel time component
+  travel_cost: 0.3    # Weight for transportation cost component
+  safety: 0.3         # Weight for safety/crime component
