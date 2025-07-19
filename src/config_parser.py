@@ -299,7 +299,6 @@ class ConfigParser:
 
         if 'timeout' in fbi_cfg and (not isinstance(fbi_cfg['timeout'], int) or fbi_cfg['timeout'] <= 0):
             raise ConfigValidationError("FBI crime timeout must be positive integer")
-
     
     def _validate_weights_config(self, weights: Dict[str, Any]) -> None:
         """Validate weights configuration."""
