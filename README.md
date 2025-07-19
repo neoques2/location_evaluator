@@ -14,7 +14,7 @@ Prototype CLI tool for exploring residential desirability. It builds a grid of p
 - `src/` – implementation modules
   - `config_parser.py` and `analyzer.py`
   - `core/` – grid generator and scheduler
-  - `apis/` – OSRM routing, Google Maps (deprecated), caching, crime data
+  - `apis/` – OSRM routing, caching, crime data
   - `visualization/` – plotly map and dashboard helpers
   - `analysis/` – experimental analysis scripts
   - `models/` – dataclasses

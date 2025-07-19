@@ -4,11 +4,6 @@ apis:
   osrm:
     base_url: "http://localhost:5000"
     timeout: 30
-  # Deprecated Google Maps section
-  google_maps:
-    api_key: ""
-    batch_size: 25
-    rate_limit: 10
 
   fbi_crime:
     base_url: "https://api.usa.gov/crime/fbi/cde/"

@@ -299,10 +299,6 @@ class ConfigParser:
 
         if 'timeout' in fbi_cfg and (not isinstance(fbi_cfg['timeout'], int) or fbi_cfg['timeout'] <= 0):
             raise ConfigValidationError("FBI crime timeout must be positive integer")
-
-        # Google Maps section is now optional and deprecated
-        if 'google_maps' in apis:
-            self.logger.warning("Google Maps API configuration detected but is deprecated")
     
     def _validate_weights_config(self, weights: Dict[str, Any]) -> None:
         """Validate weights configuration."""

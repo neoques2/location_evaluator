@@ -11,7 +11,7 @@ location_evaluator/
 │   ├── config_parser.py  # Config loading and validation
 │   ├── analyzer.py       # Core analysis engine
 │   ├── core/             # grid_generator.py, scheduler.py
-│   ├── apis/             # osrm.py, google_maps.py (deprecated), cache.py, crime_data.py, rate_limiter.py
+│   ├── apis/             # osrm.py, cache.py, crime_data.py, rate_limiter.py
 │   ├── visualization/    # plotly_maps.py, dashboard.py, statistics.py
 │   ├── analysis/         # experimental analysis scripts
 │   └── models/           # dataclasses and schemas
@@ -23,7 +23,7 @@ location_evaluator/
 1. **Configuration** – merge YAML files and validate values
 2. **Grid Generation** – produce evenly spaced points across the region
 3. **Schedule Processing** – expand weekly and monthly patterns
-4. **Route Calculation** – OSRM routing (local server) with cache; Google Maps fallback is deprecated
+4. **Route Calculation** – OSRM routing (local server) with cache
 5. **Scoring** – (placeholder) compute travel time, cost, and safety scores
 6. **Visualization** – build Plotly dashboards or JSON exports
 
