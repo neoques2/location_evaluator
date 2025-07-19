@@ -131,8 +131,8 @@ class LocationAnalyzer:
         Returns:
             Route calculation results
         """
-        # TODO: Implement actual route calculations using Google Maps API
-        # This is a placeholder that returns mock data structure
+        # TODO: Implement actual route calculations using the OSRM service.
+        # This placeholder returns a mock data structure.
         
         route_data = {
             'total_api_calls': 0,
@@ -308,7 +308,7 @@ class LocationAnalyzer:
             <li>✅ Configuration parsing and validation</li>
             <li>✅ Grid generation</li>
             <li>✅ Schedule processing</li>
-            <li>⏳ Route calculations (Google Maps API integration)</li>
+            <li>⏳ Route calculations (OSRM integration)</li>
             <li>⏳ Travel time and cost analysis</li>
             <li>⏳ Safety scoring (FBI crime data)</li>
             <li>⏳ Interactive visualization</li>

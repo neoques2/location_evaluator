@@ -22,7 +22,7 @@ The Location Evaluator uses modular YAML configuration files organized by functi
 - Cost calculation preferences
 
 **`config/api.yaml`** - External API configuration
-- Google Maps API credentials and rate limits
+- OSRM routing settings
 - FBI crime data API settings
 - Batch processing parameters
 

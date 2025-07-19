@@ -10,8 +10,7 @@
 - [ ] Create basic logging and error handling
 
 ### Phase 2: API Integration (Week 3-4)
-- [ ] Implement Google Maps API client
-- [ ] Add geocoding functionality
+- [ ] Implement OSRM routing client
 - [ ] Create batch processing for distance calculations
 - [ ] Implement rate limiting and caching
 - [ ] Add FBI crime data integration
@@ -47,8 +46,8 @@ Dependencies are specified in `requirements.txt` including:
 - **Date handling**: python-dateutil for schedule processing
 - **CLI utilities**: tqdm for progress bars, click for command interface
 
-### External APIs
-- **Google Maps API**: Geocoding, Distance Matrix, Directions
+-### External APIs
+- **OSRM**: Routing API
 - **FBI Crime Data API**: UCR/NIBRS data
 - **Mapbox** (optional): For map tiles in visualizations
 
@@ -69,14 +68,13 @@ The project is organized into modular components:
 
 **Source Code** (`src/` folder):
 - **Core modules**: Grid generation, scheduling, and analysis logic
-- **API integrations**: Google Maps and crime data APIs with rate limiting and caching
+ - **API integrations**: OSRM routing and crime data APIs with rate limiting and caching
 - **Visualization**: Plotly map generation and dashboard creation
 - **Data models**: Type definitions and data structures
 
 **Implementation Files**:
 - `src/core/grid_generator.py` - Geographic grid generation
 - `src/core/scheduler.py` - Schedule pattern processing  
-- `src/apis/google_maps.py` - Google Maps API integration
 - `src/apis/crime_data.py` - FBI crime data processing
 - `src/apis/rate_limiter.py` - Rate limiting and error handling
 - `src/apis/cache.py` - Local data caching system
@@ -127,7 +125,6 @@ optional arguments:
 ### Required Fields
 - `analysis.center_point`: Geographic center for analysis
 - `destinations`: At least one destination with schedule
-- `apis.google_maps.api_key`: Valid Google Maps API key
 
 ### Validation Rules
 - Grid size must be between 0.1 and 2.0 miles
@@ -151,10 +148,7 @@ optional arguments:
 - Cache files: ~1MB per destination per grid point
 
 ### API Usage Estimates
-- Google Maps Distance Matrix: $5 per 1,000 requests
-- Typical analysis (2,500 points, 5 destinations, 10 times): 125,000 requests
-- Estimated cost: ~$625 per complete analysis
-- Caching reduces repeat costs significantly
+OSRM is self-hosted so no direct cost. Caching reduces repeat calculations significantly.
 
 ### Optimization Strategies
 - Batch API requests to minimize overhead
