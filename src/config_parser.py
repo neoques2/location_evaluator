@@ -280,16 +280,19 @@ class ConfigParser:
     
     def _validate_api_config(self, apis: Dict[str, Any]) -> None:
         """Validate API configuration."""
-        if 'google_maps' not in apis:
-            raise ConfigValidationError("API config missing Google Maps configuration")
-        
-        google_maps = apis['google_maps']
-        if 'api_key' not in google_maps:
-            raise ConfigValidationError("Google Maps config missing API key")
-        
-        api_key = google_maps['api_key']
-        if not isinstance(api_key, str) or api_key.strip() == '' or api_key == 'YOUR_API_KEY_HERE':
-            raise ConfigValidationError("Invalid Google Maps API key")
+        if 'osrm' not in apis:
+            raise ConfigValidationError("API config missing OSRM section")
+
+        osrm_cfg = apis['osrm']
+        if 'base_url' not in osrm_cfg:
+            raise ConfigValidationError("OSRM config missing base_url")
+
+        if not isinstance(osrm_cfg['base_url'], str) or osrm_cfg['base_url'].strip() == '':
+            raise ConfigValidationError("Invalid OSRM base_url")
+
+        # Google Maps section is now optional and deprecated
+        if 'google_maps' in apis:
+            self.logger.warning("Google Maps API configuration detected but is deprecated")
     
     def _validate_weights_config(self, weights: Dict[str, Any]) -> None:
         """Validate weights configuration."""
