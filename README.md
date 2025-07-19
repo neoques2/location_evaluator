@@ -6,7 +6,7 @@ Prototype CLI tool for exploring residential desirability. It builds a grid of p
 - Modular YAML configuration
 - CLI with dry‑run and cache options
 - Grid generation and schedule processing implemented
-- Google Maps and crime data integrations are placeholders
+- OSRM routing (local server) and crime data integrations are placeholders
 - Generates simple HTML/JSON output for now
 
 ## Repository Layout
@@ -14,7 +14,7 @@ Prototype CLI tool for exploring residential desirability. It builds a grid of p
 - `src/` – implementation modules
   - `config_parser.py` and `analyzer.py`
   - `core/` – grid generator and scheduler
-  - `apis/` – Google Maps, caching, rate limiter, crime data
+  - `apis/` – OSRM routing, Google Maps (deprecated), caching, crime data
   - `visualization/` – plotly map and dashboard helpers
   - `analysis/` – experimental analysis scripts
   - `models/` – dataclasses

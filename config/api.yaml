@@ -1,13 +1,15 @@
 # API Configuration
-# API keys and rate limiting settings
-
+# API keys and endpoints
 apis:
+  osrm:
+    base_url: "http://localhost:5000"
+    timeout: 30
+  # Deprecated Google Maps section
   google_maps:
     api_key: ""
-    batch_size: 25                # requests per batch
-    rate_limit: 10                # requests per second
-    
-  # FBI Crime Data API (no key required)
+    batch_size: 25
+    rate_limit: 10
+
   fbi_crime:
     base_url: "https://api.usa.gov/crime/fbi/cde/"
-    timeout: 30                   # seconds
+    timeout: 30
