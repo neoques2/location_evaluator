@@ -69,7 +69,7 @@ def test_analyzer_uses_crime_api(monkeypatch):
 
     called = {'count': 0}
 
-    def fake_get_crime_data(lat, lon, radius_miles=0.5):
+    def fake_get_crime_data(lat, lon, radius_miles=0.5, **kwargs):
         called['count'] += 1
         return {
             'crime_score': 0.2,
@@ -94,3 +94,15 @@ def test_calculate_safety_score_increases_with_crime():
     assert 0 <= low <= 1
     assert 0 <= high <= 1
     assert high > low
+
+
+def test_calculate_safety_score_uses_weights():
+    default = crime_data.calculate_safety_score(1, 1, 1, 1000.0)
+    weighted = crime_data.calculate_safety_score(
+        1,
+        1,
+        1,
+        1000.0,
+        weights={'violent': 4.0, 'property': 2.0, 'other': 1.0},
+    )
+    assert weighted > default
