@@ -1,0 +1,73 @@
+# Example configuration
+
+# Destinations Configuration
+# Regular destinations with flexible scheduling patterns
+
+destinations:
+  work:
+    - address: "789 Corporate Dr, Business District, ST"
+      name: "Main Office"
+      schedule:
+        # Standard weekly schedule
+        - days: "Mon-Fri"
+          arrival_time: "09:00"
+          departure_time: "17:00"
+        # Weekend work
+        - days: "Sat"
+          arrival_time: "10:00"
+          departure_time: "14:00"
+          
+  personal:
+    - address: "321 Fitness St, Anytown, ST"
+      name: "Gym"
+      schedule:
+        # Specific weekdays
+        - days: "Mon,Wed,Fri"
+          arrival_time: "18:00"
+          departure_time: "19:30"
+          
+    - address: "654 Market Blvd, Anytown, ST"
+      name: "Grocery Store"
+      schedule:
+        # Weekly occurrence
+        - days: "Sun"
+          arrival_time: "10:00"
+          departure_time: "11:00"
+          
+  monthly:
+    - address: "123 Medical Center Dr, Health City, ST"
+      name: "Doctor Appointment"
+      schedule:
+        # Monthly patterns
+        - pattern: "first_monday"
+          arrival_time: "14:00"
+          departure_time: "15:00"
+        - pattern: "third_friday"
+          arrival_time: "09:00"
+          departure_time: "10:00"
+          
+    - address: "456 Community Center Ave, Anytown, ST"
+      name: "Monthly Meeting"
+      schedule:
+        # Last occurrence patterns
+        - pattern: "last_saturday"
+          arrival_time: "19:00"
+          departure_time: "21:00"
+
+# Schedule Pattern Definitions:
+# Standard Patterns:
+#   - Mon-Fri: Monday through Friday
+#   - Mon,Wed,Fri: Specific weekdays
+#   - Sat-Sun: Weekends
+#
+# Monthly Patterns:
+#   - first_monday: First Monday of each month
+#   - second_tuesday: Second Tuesday of each month
+#   - third_saturday: Third Saturday of each month
+#   - last_friday: Last Friday of each month
+#   - last_sunday: Last Sunday of each month
+#
+# Frequency Calculations:
+#   - Weekly patterns: 52 occurrences per year
+#   - Monthly patterns: 12 occurrences per year
+#   - Mixed patterns: Calculated based on actual calendar days

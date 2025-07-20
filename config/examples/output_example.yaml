@@ -1,0 +1,20 @@
+# Example configuration
+
+# Output Configuration
+# Output preferences and caching settings
+
+output:
+  include_neighborhoods: true  # add local area names to analysis
+  include_poi: true           # add nearby points of interest
+  cache_duration: 7           # days to cache route data
+  output_format: "html"       # output format (html, json, both)
+  map_style: "light"          # mapbox style (light, dark, satellite)
+  
+# Visualization preferences
+visualization:
+  default_zoom: 10            # initial map zoom level
+  color_scales:
+    travel_time: "Viridis"    # color scale for travel time layer
+    cost: "Reds"              # color scale for cost layer
+    safety: "RdYlGn"          # color scale for safety layer
+    composite: "Plasma"       # color scale for composite score

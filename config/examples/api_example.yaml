@@ -1,0 +1,15 @@
+# Example configuration
+
+# API Configuration
+# API keys and endpoints
+apis:
+  osrm:
+    base_url: "http://localhost:5000"
+    timeout: 30
+    requests_per_second: 10
+    cache: true
+    batch_size: 50           # number of coordinate pairs per table request
+
+  fbi_crime:
+    base_url: "https://api.usa.gov/crime/fbi/cde/"
+    timeout: 30
