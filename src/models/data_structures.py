@@ -70,6 +70,9 @@ class SafetyAnalysis:
     crime_score: float  # 0-1 scale, lower is safer
     nearby_incidents: int  # within radius
     safety_grade: str  # A+ to F scale
+    violent_crimes: int = 0
+    property_crimes: int = 0
+    other_crimes: int = 0
     crime_types: Dict[str, float] = field(default_factory=dict)
 
 

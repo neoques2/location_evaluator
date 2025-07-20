@@ -69,6 +69,52 @@ def save_cached_geocoding(address: str, geocoding_data: Dict[str, Any],
         json.dump(cache_data, f, indent=2)
 
 
+def get_cached_crime_data(lat: float, lon: float, radius_miles: float) -> Optional[Dict[str, Any]]:
+    """Retrieve cached crime statistics for a location if available."""
+    cache_key = f"crime_{lat:.4f}_{lon:.4f}_{radius_miles:.2f}"
+    cache_file = get_crime_cache_file_path(cache_key)
+
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, 'r') as f:
+                data = json.load(f)
+                if not is_expired(data['cache_info']['expires']):
+                    return data['crime_data']
+        except (json.JSONDecodeError, KeyError):
+            os.remove(cache_file)
+
+    return None
+
+
+def save_cached_crime_data(lat: float, lon: float, radius_miles: float,
+                           crime_data: Dict[str, Any], cache_duration_days: int = 7) -> None:
+    """Save crime statistics to cache."""
+    cache_key = f"crime_{lat:.4f}_{lon:.4f}_{radius_miles:.2f}"
+    cache_file = get_crime_cache_file_path(cache_key)
+    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+
+    cache_data = {
+        'cache_info': {
+            'created': datetime.now().isoformat(),
+            'expires': (datetime.now() + timedelta(days=cache_duration_days)).isoformat(),
+            'grid_point': {'lat': lat, 'lon': lon},
+            'radius_miles': radius_miles,
+            'cache_type': 'crime'
+        },
+        'crime_data': crime_data,
+    }
+
+    with open(cache_file, 'w') as f:
+        json.dump(cache_data, f, indent=2)
+
+
+def get_crime_cache_file_path(cache_key: str) -> str:
+    """Generate file path for cached crime statistics."""
+    cache_dir = os.path.join('data', 'crime_cache')
+    stable_hash = hashlib.md5(cache_key.encode()).hexdigest()
+    return os.path.join(cache_dir, f"{stable_hash}.json")
+
+
 def get_geocoding_cache_file_path(cache_key: str) -> str:
     """
     Generate cache file path for geocoding data.

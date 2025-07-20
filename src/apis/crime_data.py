@@ -14,6 +14,7 @@ If FBI API is unavailable:
 3. CrimeReports.com (web scraping as last resort)
 """
 
+import os
 import requests
 import json
 from typing import Dict, Any, Optional, List
@@ -116,29 +117,34 @@ def fbi_api_get_incidents(bbox: Dict[str, float], start_date: str, end_date: str
     Returns:
         List of crime incidents
     """
-    # TODO: Implement actual FBI API call
-    # This is a placeholder structure
-    
-    base_url = "https://api.usa.gov/crime/fbi/cde/"
-    
-    # Example API call structure (actual implementation needed)
+    base_url = "https://api.usa.gov/crime/fbi/cde"
+
     params = {
         'bbox': f"{bbox['west']},{bbox['south']},{bbox['east']},{bbox['north']}",
         'start_date': start_date,
-        'end_date': end_date
+        'end_date': end_date,
     }
-    
-    # Placeholder return - actual API call would go here
-    return [
-        {
-            'incident_id': 'example_001',
-            'crime_type': 'violent',
-            'subcategory': 'assault',
-            'date': '2023-06-15',
-            'lat': 0.0,
-            'lon': 0.0
-        }
-    ]
+
+    api_key = os.getenv('FBI_API_KEY')
+    if api_key:
+        params['api_key'] = api_key
+
+    url = f"{base_url}/offense/reports"
+
+    try:
+        resp = requests.get(url, params=params, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        if isinstance(data, list):
+            return data
+        if 'results' in data:
+            return data['results']
+        if 'incidents' in data:
+            return data['incidents']
+    except Exception:
+        pass
+
+    return []
 
 
 def count_by_type(crime_data: List[Dict[str, Any]], crime_type: str) -> int:

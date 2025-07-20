@@ -181,7 +181,7 @@ class LocationAnalyzer:
     
     def _analyze_locations(self, route_data: Dict[str, Any]) -> List[Any]:
         """
-        Analyze locations and calculate scores (placeholder implementation).
+        Analyze locations and calculate scores.
         
         Args:
             route_data: Route calculation results
@@ -189,12 +189,66 @@ class LocationAnalyzer:
         Returns:
             List of grid point analyses
         """
-        # TODO: Implement actual location analysis with travel time, cost, and safety scoring
-        # This is a placeholder that returns empty results
-        
+        from .apis.crime_data import get_crime_data
+        from .models.data_structures import (
+            Location,
+            TravelAnalysis,
+            CostTotals,
+            CostAnalysis,
+            SafetyAnalysis,
+            CompositeScore,
+            GridPointAnalysis,
+        )
+
         analysis_results = []
-        
-        self.logger.warning("Location analysis not yet implemented - using placeholder")
+        grid_df = self.grid.get_grid_dataframe()
+
+        for _, row in grid_df.iterrows():
+            lat = float(row['lat'])
+            lon = float(row['lon'])
+
+            crime_stats = get_crime_data(lat, lon)
+
+            safety = SafetyAnalysis(
+                crime_score=crime_stats['crime_score'],
+                nearby_incidents=crime_stats['incident_count'],
+                safety_grade=crime_stats['safety_grade'],
+                violent_crimes=crime_stats['violent_crimes'],
+                property_crimes=crime_stats['property_crimes'],
+                other_crimes=crime_stats['other_crimes'],
+                crime_types={
+                    'violent': crime_stats['violent_crimes'],
+                    'property': crime_stats['property_crimes'],
+                    'other': crime_stats['other_crimes'],
+                },
+            )
+
+            travel = TravelAnalysis(
+                total_weekly_minutes=0,
+                total_monthly_minutes=0,
+                destinations={},
+            )
+
+            totals = CostTotals(0.0, 0.0, 0.0, 0.0)
+            cost = CostAnalysis(weekly_totals=totals, monthly_totals=totals)
+
+            comp = CompositeScore(
+                overall=max(0.0, 1.0 - safety.crime_score),
+                components={'safety': max(0.0, 1.0 - safety.crime_score)},
+                grade=safety.safety_grade,
+                rank_percentile=0,
+            )
+
+            analysis_results.append(
+                GridPointAnalysis(
+                    location=Location(lat=lat, lon=lon, address=f"{lat},{lon}"),
+                    travel_analysis=travel,
+                    cost_analysis=cost,
+                    safety_analysis=safety,
+                    composite_score=comp,
+                )
+            )
+
         return analysis_results
     
     def _compute_regional_statistics(self, analysis_results: List[Any]) -> RegionalStatistics:
