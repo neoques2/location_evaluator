@@ -7,6 +7,8 @@ import logging
 from typing import Dict, Any, List
 from pathlib import Path
 
+from .apis.osrm import OSRMClient
+
 from .core.grid_generator import AnalysisGrid
 from .core.scheduler import process_schedules
 from .models.data_structures import AnalysisResults, AnalysisMetadata, RegionalStatistics
@@ -126,14 +128,21 @@ class LocationAnalyzer:
     
     def _calculate_routes(self) -> Dict[str, Any]:
         """
-        Calculate routes for all grid points (placeholder implementation).
-        
+        Calculate routes for all grid points using the OSRM service.
+
         Returns:
             Route calculation results
         """
-        # TODO: Implement actual route calculations using the OSRM service.
-        # This placeholder returns a mock data structure.
-        
+        osrm_cfg = self.config.get('apis', {}).get('osrm', {})
+        client = OSRMClient(
+            base_url=osrm_cfg.get('base_url', 'http://localhost:5000'),
+            timeout=osrm_cfg.get('timeout', 30)
+        )
+        batch_size = osrm_cfg.get('batch_size', 50)
+
+        grid_df = self.grid.get_grid_dataframe()
+        center = {'lat': self.grid.center_lat, 'lon': self.grid.center_lon}
+
         route_data = {
             'total_api_calls': 0,
             'successful_calculations': 0,
@@ -141,8 +150,30 @@ class LocationAnalyzer:
             'cache_hits': 0,
             'routes': {}
         }
-        
-        self.logger.warning("Route calculation not yet implemented - using placeholder")
+
+        origins: List[Dict[str, float]] = []
+        destinations: List[Dict[str, float]] = []
+        ids: List[int] = []
+
+        for idx, row in enumerate(grid_df.itertuples(), 1):
+            origins.append({'lat': row.lat, 'lon': row.lon})
+            destinations.append(center)
+            ids.append(row.point_id)
+
+            if len(origins) == batch_size or idx == len(grid_df):
+                results = client.route_batch(origins, destinations)
+                route_data['total_api_calls'] += 1
+                for pid, res in zip(ids, results):
+                    route_data['routes'][pid] = res
+                    if res['status'] == 'OK':
+                        route_data['successful_calculations'] += 1
+                    else:
+                        route_data['failed_calculations'] += 1
+
+                origins = []
+                destinations = []
+                ids = []
+
         return route_data
     
     def _analyze_locations(self, route_data: Dict[str, Any]) -> List[Any]:
