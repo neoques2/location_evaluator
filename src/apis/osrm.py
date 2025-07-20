@@ -60,32 +60,56 @@ class OSRMClient:
             save_cached_osrm_route(origin['lat'], origin['lon'], destination['lat'], destination['lon'], result, profile=profile, cache_duration_days=self.cache_duration_days)
         return result
 
-    def route_batch(self, origins: List[Dict[str, float]], destinations: List[Dict[str, float]], profile: str = "driving") -> List[Dict[str, Any]]:
+    def route_batch(
+        self,
+        origins: List[Dict[str, float]],
+        destinations: List[Dict[str, float]],
+        profile: str = "driving",
+    ) -> List[Dict[str, Any]]:
         """Calculate multiple routes using the OSRM /table API."""
         if len(origins) != len(destinations):
             raise ValueError("origins and destinations must have same length")
-        results: List[Optional[Dict[str, Any]]] = []
-        uncached_origins: List[Dict[str, float]] = []
-        uncached_dests: List[Dict[str, float]] = []
-        indices: List[int] = []
 
-        for idx, (o, d) in enumerate(zip(origins, destinations)):
-            cached = None
-            if self.use_cache and not self.force_refresh:
-                cached = get_cached_osrm_route(o['lat'], o['lon'], d['lat'], d['lon'], profile)
-            if cached:
-                results.append(cached)
-            else:
-                results.append(None)
-                uncached_origins.append(o)
-                uncached_dests.append(d)
-                indices.append(idx)
+        import pandas as pd
 
-        if uncached_origins:
-            coords = uncached_origins + uncached_dests
-            coord_str = ';'.join(f"{c['lon']},{c['lat']}" for c in coords)
-            sources = ';'.join(str(i) for i in range(len(uncached_origins)))
-            dests = ';'.join(str(len(uncached_origins) + i) for i in range(len(uncached_dests)))
+        df = pd.DataFrame(
+            {
+                "o_lat": [o["lat"] for o in origins],
+                "o_lon": [o["lon"] for o in origins],
+                "d_lat": [d["lat"] for d in destinations],
+                "d_lon": [d["lon"] for d in destinations],
+                "idx": list(range(len(origins))),
+            }
+        )
+
+        results: List[Optional[Dict[str, Any]]] = [None] * len(df)
+
+        if self.use_cache and not self.force_refresh:
+            df["cached"] = df.apply(
+                lambda r: get_cached_osrm_route(
+                    r.o_lat, r.o_lon, r.d_lat, r.d_lon, profile
+                ),
+                axis=1,
+            )
+            for _, row in df.dropna(subset=["cached"]).iterrows():
+                results[int(row.idx)] = row.cached
+            uncached = df[df["cached"].isna()].reset_index(drop=True)
+        else:
+            df["cached"] = None
+            uncached = df
+
+        if not uncached.empty:
+            coord_parts = (
+                uncached[["o_lon", "o_lat"]]
+                .apply(lambda r: f"{r.o_lon},{r.o_lat}", axis=1)
+                .tolist()
+                + uncached[["d_lon", "d_lat"]]
+                .apply(lambda r: f"{r.d_lon},{r.d_lat}", axis=1)
+                .tolist()
+            )
+            coord_str = ";".join(coord_parts)
+            sources = ";".join(str(i) for i in range(len(uncached)))
+            dests = ";".join(str(len(uncached) + i) for i in range(len(uncached)))
             url = f"{self.base_url}/table/v1/{profile}/{coord_str}?sources={sources}&destinations={dests}&annotations=distance,duration"
 
             try:
@@ -95,41 +119,51 @@ class OSRMClient:
                 )
                 resp.raise_for_status()
                 data = resp.json()
-                if 'durations' in data and 'distances' in data:
-                    for i, idx in enumerate(indices):
-                        dist = data['distances'][i][i]
-                        dur = data['durations'][i][i]
+                if "durations" in data and "distances" in data:
+                    for i, row in uncached.iterrows():
+                        dist = data["distances"][i][i]
+                        dur = data["durations"][i][i]
                         result = {
-                            'distance_miles': dist * 0.000621371,
-                            'duration_seconds': dur,
-                            'status': 'OK',
+                            "distance_miles": dist * 0.000621371,
+                            "duration_seconds": dur,
+                            "status": "OK",
                         }
+                        idx = int(row.idx)
                         results[idx] = result
                         if self.use_cache:
                             save_cached_osrm_route(
-                                uncached_origins[i]['lat'], uncached_origins[i]['lon'],
-                                uncached_dests[i]['lat'], uncached_dests[i]['lon'],
-                                result, profile=profile, cache_duration_days=self.cache_duration_days
+                                row.o_lat,
+                                row.o_lon,
+                                row.d_lat,
+                                row.d_lon,
+                                result,
+                                profile=profile,
+                                cache_duration_days=self.cache_duration_days,
                             )
             except Exception as e:
-                self.logger.warning(f"OSRM batch request failed: {e}; using fallback")
-                for i, idx in enumerate(indices):
-                    o = uncached_origins[i]
-                    d = uncached_dests[i]
-                    distance = self._haversine(o['lat'], o['lon'], d['lat'], d['lon'])
+                self.logger.warning(
+                    f"OSRM batch request failed: {e}; using fallback"
+                )
+                for i, row in uncached.iterrows():
+                    distance = self._haversine(row.o_lat, row.o_lon, row.d_lat, row.d_lon)
                     result = {
-                        'distance_miles': distance,
-                        'duration_seconds': self._estimate_duration(distance),
-                        'status': 'ESTIMATED',
+                        "distance_miles": distance,
+                        "duration_seconds": self._estimate_duration(distance),
+                        "status": "ESTIMATED",
                     }
+                    idx = int(row.idx)
                     results[idx] = result
                     if self.use_cache:
                         save_cached_osrm_route(
-                            o['lat'], o['lon'], d['lat'], d['lon'],
-                            result, profile=profile, cache_duration_days=self.cache_duration_days
+                            row.o_lat,
+                            row.o_lon,
+                            row.d_lat,
+                            row.d_lon,
+                            result,
+                            profile=profile,
+                            cache_duration_days=self.cache_duration_days,
                         )
 
-        # Fill remaining entries (cached results already set)
         return results
 
     def _haversine(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:

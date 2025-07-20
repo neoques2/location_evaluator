@@ -8,6 +8,32 @@ import json
 import hashlib
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
+import pandas as pd
+
+OSRM_CACHE_FILE = os.path.join("data", "osrm_cache.csv")
+
+
+def _load_osrm_cache() -> pd.DataFrame:
+    if os.path.exists(OSRM_CACHE_FILE):
+        return pd.read_csv(OSRM_CACHE_FILE, parse_dates=["expires"])
+    return pd.DataFrame(
+        columns=[
+            "origin_lat",
+            "origin_lon",
+            "dest_lat",
+            "dest_lon",
+            "profile",
+            "distance_miles",
+            "duration_seconds",
+            "status",
+            "expires",
+        ]
+    )
+
+
+def _save_osrm_cache(df: pd.DataFrame) -> None:
+    os.makedirs(os.path.dirname(OSRM_CACHE_FILE) or ".", exist_ok=True)
+    df.to_csv(OSRM_CACHE_FILE, index=False)
 
 
 def get_cached_geocoding(address: str) -> Optional[Dict[str, Any]]:
@@ -206,44 +232,72 @@ def save_cached_route(origin_lat: float, origin_lon: float, destination_address:
         json.dump(cache_data, f, indent=2)
 
 
-def get_cached_osrm_route(origin_lat: float, origin_lon: float,
-                          dest_lat: float, dest_lon: float,
-                          profile: str = "driving") -> Optional[Dict[str, Any]]:
+def get_cached_osrm_route(
+    origin_lat: float,
+    origin_lon: float,
+    dest_lat: float,
+    dest_lon: float,
+    profile: str = "driving",
+) -> Optional[Dict[str, Any]]:
     """Retrieve cached OSRM route by coordinate pair if available."""
-    cache_key = f"osrm_{origin_lat:.4f}_{origin_lon:.4f}_{dest_lat:.4f}_{dest_lon:.4f}_{profile}"
-    cache_file = get_cache_file_path(origin_lat, origin_lon, cache_key)
-
-    if os.path.exists(cache_file):
-        try:
-            with open(cache_file, "r") as f:
-                data = json.load(f)
-                if not is_expired(data["cache_info"]["expires"]):
-                    return data["route_data"]
-        except (json.JSONDecodeError, KeyError):
-            os.remove(cache_file)
+    df = _load_osrm_cache()
+    if df.empty:
+        return None
+    mask = (
+        (df.origin_lat == origin_lat)
+        & (df.origin_lon == origin_lon)
+        & (df.dest_lat == dest_lat)
+        & (df.dest_lon == dest_lon)
+        & (df.profile == profile)
+    )
+    row = df.loc[mask]
+    if not row.empty and row.iloc[0]["expires"] > datetime.now():
+        r = row.iloc[0]
+        return {
+            "distance_miles": float(r.distance_miles),
+            "duration_seconds": float(r.duration_seconds),
+            "status": r.status,
+        }
     return None
 
 
-def save_cached_osrm_route(origin_lat: float, origin_lon: float,
-                           dest_lat: float, dest_lon: float,
-                           route_data: Dict[str, Any], profile: str = "driving",
-                           cache_duration_days: int = 7) -> None:
+def save_cached_osrm_route(
+    origin_lat: float,
+    origin_lon: float,
+    dest_lat: float,
+    dest_lon: float,
+    route_data: Dict[str, Any],
+    profile: str = "driving",
+    cache_duration_days: int = 7,
+) -> None:
     """Save OSRM route to cache."""
-    cache_key = f"osrm_{origin_lat:.4f}_{origin_lon:.4f}_{dest_lat:.4f}_{dest_lon:.4f}_{profile}"
-    cache_file = get_cache_file_path(origin_lat, origin_lon, cache_key)
-    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
-    cache_data = {
-        "cache_info": {
-            "created": datetime.now().isoformat(),
-            "expires": (datetime.now() + timedelta(days=cache_duration_days)).isoformat(),
-            "origin": {"lat": origin_lat, "lon": origin_lon},
-            "destination": {"lat": dest_lat, "lon": dest_lon},
-            "profile": profile,
-        },
-        "route_data": route_data,
-    }
-    with open(cache_file, "w") as f:
-        json.dump(cache_data, f, indent=2)
+    df = _load_osrm_cache()
+    expires = datetime.now() + timedelta(days=cache_duration_days)
+    mask = (
+        (df.origin_lat == origin_lat)
+        & (df.origin_lon == origin_lon)
+        & (df.dest_lat == dest_lat)
+        & (df.dest_lon == dest_lon)
+        & (df.profile == profile)
+    )
+    df = df.loc[~mask]
+    new_row = pd.DataFrame(
+        [
+            {
+                "origin_lat": origin_lat,
+                "origin_lon": origin_lon,
+                "dest_lat": dest_lat,
+                "dest_lon": dest_lon,
+                "profile": profile,
+                "distance_miles": route_data.get("distance_miles", 0.0),
+                "duration_seconds": route_data.get("duration_seconds", 0.0),
+                "status": route_data.get("status", "OK"),
+                "expires": expires,
+            }
+        ]
+    )
+    df = pd.concat([df, new_row], ignore_index=True)
+    _save_osrm_cache(df)
 
 
 def get_cache_file_path(lat: float, lon: float, cache_key: str) -> str:

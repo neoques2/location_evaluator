@@ -168,7 +168,7 @@ The following packages need to be installed (see `requirements.txt`):
 ### Optimization Tasks
 - [ ] Implement parallel API processing
 - [ ] Add memory usage monitoring
-- [ ] Optimize cache file formats
+ - [x] Optimize cache file formats
 - [x] Add OSRM client caching for route requests
  - [x] Add progress indicators
 - [x] Vectorize analysis calculations with pandas
