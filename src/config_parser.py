@@ -290,6 +290,11 @@ class ConfigParser:
         if not isinstance(osrm_cfg['base_url'], str) or osrm_cfg['base_url'].strip() == '':
             raise ConfigValidationError("Invalid OSRM base_url")
 
+        if 'batch_size' in osrm_cfg:
+            bs = osrm_cfg['batch_size']
+            if not isinstance(bs, int) or bs <= 0:
+                raise ConfigValidationError("OSRM batch_size must be positive integer")
+
         if 'fbi_crime' not in apis:
             raise ConfigValidationError("API config missing fbi_crime section")
 
