@@ -19,7 +19,7 @@ import requests
 import json
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
-from datetime import datetime
+from .cache import get_cached_crime_data, save_cached_crime_data
 
 
 @dataclass
@@ -41,6 +41,9 @@ def get_crime_data(
     weights: Optional[Dict[str, float]] = None,
     density_scale: float = 1000.0,
     score_scale: float = 10.0,
+    use_cache: bool = True,
+    cache_duration_days: int = 7,
+    force_refresh: bool = False,
 ) -> Dict[str, Any]:
     """
     Get crime statistics for area around location.
@@ -56,6 +59,11 @@ def get_crime_data(
     Returns:
         Dictionary containing crime statistics and safety score
     """
+    if use_cache and not force_refresh:
+        cached = get_cached_crime_data(lat, lon, radius_miles)
+        if cached is not None:
+            return cached
+
     # Convert to bounding box
     bbox = get_bounding_box(lat, lon, radius_miles)
     
@@ -84,7 +92,7 @@ def get_crime_data(
         score_scale=score_scale,
     )
     
-    return {
+    result = {
         'crime_score': safety_score,
         'incident_count': len(crime_data),
         'violent_crimes': violent_crimes,
@@ -92,6 +100,12 @@ def get_crime_data(
         'other_crimes': other_crimes,
         'safety_grade': score_to_grade(safety_score)
     }
+
+    if use_cache:
+        save_cached_crime_data(lat, lon, radius_miles, result,
+                               cache_duration_days=cache_duration_days)
+
+    return result
 
 
 def get_bounding_box(lat: float, lon: float, radius_miles: float) -> Dict[str, float]:

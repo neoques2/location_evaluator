@@ -51,6 +51,24 @@ def test_crime_cache_helpers(tmp_path):
     assert loaded == sample
 
 
+def test_get_crime_data_uses_cache(monkeypatch, tmp_path):
+    os.chdir(tmp_path)
+    calls = {'count': 0}
+
+    def fake_get(url, params=None, timeout=10):
+        calls['count'] += 1
+        return DummyResp({'incidents': []})
+
+    monkeypatch.setattr(crime_data.requests, 'get', fake_get)
+
+    result1 = crime_data.get_crime_data(40.0, -75.0, radius_miles=0.5, cache_duration_days=1)
+    assert calls['count'] == 1
+
+    result2 = crime_data.get_crime_data(40.0, -75.0, radius_miles=0.5, cache_duration_days=1)
+    assert calls['count'] == 1  # no additional call
+    assert result1 == result2
+
+
 def test_analyzer_uses_crime_api(monkeypatch):
     cfg = {
         'analysis': {
