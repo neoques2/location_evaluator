@@ -158,8 +158,8 @@ The following packages need to be installed (see `requirements.txt`):
 - [ ] Set appropriate cache duration
 
 ### Validation Improvements
-- [ ] Add geocoding validation for addresses
-- [ ] Implement network connectivity checks
+- [x] Add geocoding validation for addresses
+- [x] Implement network connectivity checks
 - [ ] Add disk space validation
 - [ ] Create configuration migration tools
 
