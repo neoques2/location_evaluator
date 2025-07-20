@@ -2,15 +2,6 @@
 
 ## API Keys and External Services Setup
 
-### Google Maps API
-- [x] Obtain Google Maps API key from [Google Cloud Console](https://console.cloud.google.com/)
-- [x] Enable required APIs:
-  - [x] Geocoding API
-  - [x] Distance Matrix API  
-  - [x] Directions API
-- [ ] Set up billing and quotas
-- [x] Replace dummy API key in `config/api.yaml`
-- [ ] Test API connectivity
 
 ### FBI Crime Data API
 - [ ] Verify FBI Crime Data Explorer API access
@@ -27,8 +18,7 @@
 - [x] Create basic data structures
 
 ### Phase 2: API Integration
-- [ ] Implement Google Maps geocoding
-- [ ] Implement batch distance matrix calculations
+- [x] Implement OSRM routing client
 - [ ] Add rate limiting and error handling
 - [ ] Implement local caching system
 - [ ] Add FBI crime data integration
@@ -51,8 +41,8 @@
 - [ ] Add comprehensive unit tests
 - [ ] Implement integration tests
 - [ ] Add performance optimization
-- [ ] Create user documentation
-- [ ] Add example configurations
+- [x] Create user documentation
+- [x] Add example configurations
 
 ## System Requirements
 
@@ -101,7 +91,7 @@ The following packages need to be installed (see `requirements.txt`):
 ## Documentation
 
 ### User Documentation
-- [ ] Create comprehensive README.md
+- [x] Create comprehensive README.md
 - [ ] Add configuration examples
 - [ ] Document API key setup process
 - [ ] Create troubleshooting guide
@@ -147,7 +137,6 @@ The following packages need to be installed (see `requirements.txt`):
 To get the Location Evaluator running:
 
 1. **Setup API Access**
-   - [ ] Get Google Maps API key
    - [ ] Update `config/api.yaml`
 
 2. **Configure Analysis**
@@ -165,7 +154,8 @@ To get the Location Evaluator running:
 ## Implementation Notes
 
 - Core infrastructure (Phase 1) is complete and tested
-- API integration (Phase 2) is the current priority
+- OSRM routing client integrated; Google Maps removed
+- API integration (Phase 2) now focuses on caching and FBI data
 - Configuration system supports modular YAML files
 - Grid generation and schedule processing are functional
-- Placeholder implementations exist for route calculations and analysis
+- Placeholder implementations remain for travel scoring and visualization
