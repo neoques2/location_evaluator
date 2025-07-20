@@ -22,7 +22,26 @@ class ConfigParser:
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        
+
+    def _load_api_secrets(self, config_dir: Path) -> None:
+        """Load API secrets from optional file and set environment variables."""
+        secrets_file = config_dir / "api_secrets.yaml"
+        if not secrets_file.exists():
+            return
+        try:
+            with open(secrets_file, "r", encoding="utf-8") as f:
+                secrets = yaml.safe_load(f) or {}
+            if isinstance(secrets, dict):
+                for key, value in secrets.items():
+                    os.environ.setdefault(key, str(value))
+                self.logger.debug(f"Loaded API secrets from {secrets_file}")
+            else:
+                self.logger.warning("api_secrets.yaml must contain a dictionary")
+        except yaml.YAMLError as e:
+            self.logger.warning(f"Invalid YAML in {secrets_file}: {e}")
+        except Exception as e:
+            self.logger.warning(f"Error loading {secrets_file}: {e}")
+
     def load_config(self, config_path: Union[str, Path]) -> Dict[str, Any]:
         """
         Load configuration from directory of YAML files or single file.
@@ -62,6 +81,7 @@ class ConfigParser:
     
     def _load_modular_config(self, config_dir: Path) -> Dict[str, Any]:
         """Load configuration from modular YAML files in directory."""
+        self._load_api_secrets(config_dir)
         config = {}
         
         # Expected config files

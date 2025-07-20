@@ -7,3 +7,4 @@ outputs
 node_modules
 package-lock.json
 package.json
+config/api_secrets.yaml

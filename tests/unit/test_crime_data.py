@@ -34,7 +34,7 @@ def test_get_crime_data_makes_request(monkeypatch):
 
     monkeypatch.setattr(crime_data.requests, 'get', fake_get)
 
-    data = crime_data.get_crime_data(40.0, -75.0, radius_miles=0.5)
+    data = crime_data.get_crime_data(40.0, -75.0, radius_miles=0.5, use_cache=False)
     assert called['url'].startswith('https://')
     assert data['incident_count'] == 3
     assert data['violent_crimes'] == 1
