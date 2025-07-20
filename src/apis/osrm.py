@@ -3,13 +3,17 @@ import logging
 from typing import Dict, Any, Optional, List
 
 import requests
+from .rate_limiter import RateLimiter, APIHandler
 
 class OSRMClient:
     """Simple OSRM API client with offline fallback."""
 
-    def __init__(self, base_url: str = "http://localhost:5000", timeout: int = 30):
+    def __init__(self, base_url: str = "http://localhost:5000", timeout: int = 30,
+                 requests_per_second: int = 10, api_handler: Optional[APIHandler] = None):
         self.base_url = base_url.rstrip('/')
         self.timeout = timeout
+        self.rate_limiter = RateLimiter(requests_per_second=requests_per_second)
+        self.api_handler = api_handler or APIHandler()
         self.logger = logging.getLogger(__name__)
 
     def route(self, origin: Dict[str, float], destination: Dict[str, float], profile: str = "driving") -> Dict[str, Any]:
@@ -19,7 +23,8 @@ class OSRMClient:
         """
         url = f"{self.base_url}/route/v1/{profile}/{origin['lon']},{origin['lat']};{destination['lon']},{destination['lat']}?overview=false"
         try:
-            resp = requests.get(url, timeout=self.timeout)
+            self.rate_limiter.wait_if_needed()
+            resp = self.api_handler.call_with_retry(lambda: requests.get(url, timeout=self.timeout))
             resp.raise_for_status()
             data = resp.json()
             if data.get('routes'):

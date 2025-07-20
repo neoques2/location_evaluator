@@ -12,6 +12,8 @@ from .apis.osrm import OSRMClient
 from .core.grid_generator import AnalysisGrid
 from .core.scheduler import process_schedules
 from .models.data_structures import AnalysisResults, AnalysisMetadata, RegionalStatistics
+from .apis.osrm import OSRMClient
+from .apis.cache import get_cached_route, save_cached_route
 
 
 class LocationAnalyzer:
@@ -142,6 +144,7 @@ class LocationAnalyzer:
 
         grid_df = self.grid.get_grid_dataframe()
         center = {'lat': self.grid.center_lat, 'lon': self.grid.center_lon}
+        use_cache = osrm_cfg.get('cache', True)
 
         route_data = {
             'total_api_calls': 0,

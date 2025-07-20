@@ -290,6 +290,17 @@ class ConfigParser:
         if not isinstance(osrm_cfg['base_url'], str) or osrm_cfg['base_url'].strip() == '':
             raise ConfigValidationError("Invalid OSRM base_url")
 
+        if 'timeout' in osrm_cfg and (not isinstance(osrm_cfg['timeout'], int) or osrm_cfg['timeout'] <= 0):
+            raise ConfigValidationError("OSRM timeout must be positive integer")
+
+        if 'requests_per_second' in osrm_cfg:
+            rps = osrm_cfg['requests_per_second']
+            if not isinstance(rps, int) or rps <= 0:
+                raise ConfigValidationError("requests_per_second must be positive integer")
+
+        if 'cache' in osrm_cfg and not isinstance(osrm_cfg['cache'], bool):
+            raise ConfigValidationError("OSRM cache must be boolean")
+
         if 'batch_size' in osrm_cfg:
             bs = osrm_cfg['batch_size']
             if not isinstance(bs, int) or bs <= 0:
