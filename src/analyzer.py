@@ -10,7 +10,11 @@ from pathlib import Path
 from .apis.osrm import OSRMClient
 
 from .core.grid_generator import AnalysisGrid
-from .core.scheduler import process_schedules
+from .core.scheduler import (
+    process_schedules,
+    calculate_weekly_frequency,
+    calculate_monthly_frequency,
+)
 from .models.data_structures import AnalysisResults, AnalysisMetadata, RegionalStatistics
 from .apis.osrm import OSRMClient
 from .apis.cache import get_cached_route, save_cached_route
@@ -138,12 +142,12 @@ class LocationAnalyzer:
         osrm_cfg = self.config.get('apis', {}).get('osrm', {})
         client = OSRMClient(
             base_url=osrm_cfg.get('base_url', 'http://localhost:5000'),
-            timeout=osrm_cfg.get('timeout', 30)
+            timeout=osrm_cfg.get('timeout', 30),
+            requests_per_second=osrm_cfg.get('requests_per_second', 10),
         )
         batch_size = osrm_cfg.get('batch_size', 50)
 
         grid_df = self.grid.get_grid_dataframe()
-        center = {'lat': self.grid.center_lat, 'lon': self.grid.center_lon}
         use_cache = osrm_cfg.get('cache', True)
 
         route_data = {
@@ -156,26 +160,55 @@ class LocationAnalyzer:
 
         origins: List[Dict[str, float]] = []
         destinations: List[Dict[str, float]] = []
-        ids: List[int] = []
+        meta: List[tuple] = []
 
-        for idx, row in enumerate(grid_df.itertuples(), 1):
-            origins.append({'lat': row.lat, 'lon': row.lon})
-            destinations.append(center)
-            ids.append(row.point_id)
+        def flush_batch() -> None:
+            if not origins:
+                return
+            results = client.route_batch(origins, destinations)
+            route_data['total_api_calls'] += 1
+            for (pid, dest_address, o_lat, o_lon, dep, day), res in zip(meta, results):
+                route_data['routes'].setdefault(pid, {})[dest_address] = res
+                if res['status'] == 'OK':
+                    route_data['successful_calculations'] += 1
+                else:
+                    route_data['failed_calculations'] += 1
+                if use_cache:
+                    save_cached_route(o_lat, o_lon, dest_address, dep, day, res,
+                                     cache_duration_days=self.output_config.get('cache_duration', 7))
+            origins.clear()
+            destinations.clear()
+            meta.clear()
 
-            if len(origins) == batch_size or idx == len(grid_df):
-                results = client.route_batch(origins, destinations)
-                route_data['total_api_calls'] += 1
-                for pid, res in zip(ids, results):
-                    route_data['routes'][pid] = res
-                    if res['status'] == 'OK':
-                        route_data['successful_calculations'] += 1
-                    else:
-                        route_data['failed_calculations'] += 1
+        for row in grid_df.itertuples():
+            origin = {'lat': row.lat, 'lon': row.lon}
+            for sched in self.schedules:
+                dest_addr = sched['destination']
+                dep = sched.get('departure_time', '')
+                day = sched.get('day', sched.get('pattern', ''))
+                dest = {'lat': sched.get('lat', origin['lat']), 'lon': sched.get('lon', origin['lon'])}
 
-                origins = []
-                destinations = []
-                ids = []
+                cached = None
+                if use_cache and not self.force_refresh:
+                    cached = get_cached_route(origin['lat'], origin['lon'], dest_addr, dep, day)
+
+                if cached:
+                    route_data['cache_hits'] += 1
+                    route_data['routes'].setdefault(row.point_id, {})[dest_addr] = cached
+                    continue
+
+                if self.cache_only:
+                    route_data['failed_calculations'] += 1
+                    continue
+
+                origins.append(origin)
+                destinations.append(dest)
+                meta.append((row.point_id, dest_addr, origin['lat'], origin['lon'], dep, day))
+
+                if len(origins) >= batch_size:
+                    flush_batch()
+
+        flush_batch()
 
         return route_data
     
@@ -197,11 +230,19 @@ class LocationAnalyzer:
             CostAnalysis,
             SafetyAnalysis,
             CompositeScore,
+            DestinationAnalysis,
+            Route,
             GridPointAnalysis,
         )
 
         analysis_results = []
         grid_df = self.grid.get_grid_dataframe()
+        schedules = self.schedules or []
+        weekly_freq = calculate_weekly_frequency(schedules)
+        monthly_freq = calculate_monthly_frequency(schedules)
+        dest_meta = {s['destination']: {'name': s['destination_name'], 'category': s['category'], 'departure': s.get('departure_time', '')} for s in schedules}
+
+        route_map = route_data.get('routes', {}) if isinstance(route_data, dict) else {}
 
         for _, row in grid_df.iterrows():
             lat = float(row['lat'])
@@ -223,10 +264,42 @@ class LocationAnalyzer:
                 },
             )
 
+            dest_map: Dict[str, Dict[str, DestinationAnalysis]] = {}
+            total_weekly = 0.0
+            total_monthly = 0.0
+
+            point_routes = route_map.get(row.point_id, {})
+            for dest_addr, freq in weekly_freq.items():
+                route = point_routes.get(dest_addr)
+                if not route:
+                    continue
+                meta = dest_meta[dest_addr]
+                w_trips = freq
+                m_trips = monthly_freq.get(dest_addr, 0)
+                avg_minutes = route['duration_seconds'] / 60
+                weekly_time = avg_minutes * w_trips
+                total_weekly += weekly_time
+                total_monthly += avg_minutes * m_trips
+
+                analysis = DestinationAnalysis(
+                    weekly_trips=int(round(w_trips)),
+                    monthly_trips=int(round(m_trips)),
+                    avg_travel_time=avg_minutes,
+                    total_weekly_time=weekly_time,
+                    routes=[Route(
+                        departure_time=meta['departure'],
+                        arrival_time=meta['departure'],
+                        mode='driving',
+                        duration=int(avg_minutes),
+                        distance=route['distance_miles'],
+                    )],
+                )
+                dest_map.setdefault(meta['category'], {})[meta['name']] = analysis
+
             travel = TravelAnalysis(
-                total_weekly_minutes=0,
-                total_monthly_minutes=0,
-                destinations={},
+                total_weekly_minutes=int(round(total_weekly)),
+                total_monthly_minutes=int(round(total_monthly)),
+                destinations=dest_map,
             )
 
             totals = CostTotals(0.0, 0.0, 0.0, 0.0)
@@ -261,13 +334,41 @@ class LocationAnalyzer:
         Returns:
             Regional statistics summary
         """
-        # TODO: Implement actual regional statistics calculation
-        # This is a placeholder
-        
-        regional_stats = RegionalStatistics()
-        
-        self.logger.warning("Regional statistics not yet implemented - using placeholder")
-        return regional_stats
+        if not analysis_results:
+            return RegionalStatistics()
+
+        travel_times = [p.travel_analysis.total_weekly_minutes for p in analysis_results]
+        crime_scores = [p.safety_analysis.crime_score for p in analysis_results]
+        comp_scores = [p.composite_score.overall for p in analysis_results]
+
+        best = sorted(analysis_results, key=lambda p: p.composite_score.overall, reverse=True)[:5]
+        best_locations = [
+            {
+                'lat': b.location.lat,
+                'lon': b.location.lon,
+                'score': b.composite_score.overall,
+            }
+            for b in best
+        ]
+
+        return RegionalStatistics(
+            travel_time={
+                'min': min(travel_times),
+                'max': max(travel_times),
+                'avg': sum(travel_times) / len(travel_times),
+            },
+            safety={
+                'min': min(crime_scores),
+                'max': max(crime_scores),
+                'avg': sum(crime_scores) / len(crime_scores),
+            },
+            composite={
+                'min': min(comp_scores),
+                'max': max(comp_scores),
+                'avg': sum(comp_scores) / len(comp_scores),
+            },
+            best_locations=best_locations,
+        )
     
     def _create_metadata(self) -> AnalysisMetadata:
         """Create analysis metadata."""

@@ -94,6 +94,12 @@ Examples:
     return parser.parse_args()
 
 
+def ensure_directories() -> None:
+    """Ensure data and output directories exist."""
+    Path('data').mkdir(parents=True, exist_ok=True)
+    Path('outputs').mkdir(parents=True, exist_ok=True)
+
+
 def validate_config_overrides(args: argparse.Namespace) -> None:
     """Validate command line configuration overrides."""
     if args.grid_size is not None:
@@ -186,7 +192,9 @@ def main() -> int:
         logger = logging.getLogger(__name__)
         
         logger.info("Starting Location Evaluator")
-        
+
+        ensure_directories()
+
         # Validate overrides
         validate_config_overrides(args)
         
