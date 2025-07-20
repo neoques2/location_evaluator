@@ -270,9 +270,13 @@ class LocationAnalyzer:
             monthly_map = schedules_df.assign(
                 weight=schedules_df['frequency'].map({'weekly': 52/12, 'monthly': 1.0})
             ).groupby('destination')['weight'].sum()
-            dest_meta = schedules_df[
-                ['destination', 'destination_name', 'category', 'departure_time']
-            ].drop_duplicates().set_index('destination')
+            dest_meta = (
+                schedules_df[
+                    ['destination', 'destination_name', 'category', 'departure_time']
+                ]
+                .drop_duplicates(subset=['destination'])
+                .set_index('destination')
+            )
 
         route_records = []
         for pid, dests in route_data.get('routes', {}).items():
