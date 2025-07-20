@@ -62,6 +62,8 @@ def get_crime_data(
     if use_cache and not force_refresh:
         cached = get_cached_crime_data(lat, lon, radius_miles)
         if cached is not None:
+            if cached.get('crime_data') is not None and cached.get('crime_data').get('crime_score') != 0.0:
+                print(cached.get('crime_data'))
             return cached
 
     # Convert to bounding box

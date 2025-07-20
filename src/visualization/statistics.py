@@ -21,17 +21,16 @@ def create_summary_stats(analysis_results: Dict[str, Any]) -> go.Figure:
     
     summary_table = go.Figure(data=[go.Table(
         header=dict(
-            values=['Metric', 'Min', 'Max', 'Average', 'Median'],
+            values=['Metric', 'Min', 'Max', 'Average'],
             fill_color='lightblue',
             align='left'
         ),
         cells=dict(
             values=[
                 ['Travel Time (min)', 'Monthly Cost ($)', 'Safety Score'],
-                [stats['travel_time']['min'], f"${stats['cost']['min']:.2f}", f"{stats['safety']['min']:.2f}"],
-                [stats['travel_time']['max'], f"${stats['cost']['max']:.2f}", f"{stats['safety']['max']:.2f}"],
-                [stats['travel_time']['avg'], f"${stats['cost']['avg']:.2f}", f"{stats['safety']['avg']:.2f}"],
-                [stats['travel_time']['median'], f"${stats['cost']['median']:.2f}", f"{stats['safety']['median']:.2f}"]
+                [stats['travel_time']['min'], f"${stats['cost']}", f"{stats['safety']['min']}"],
+                [stats['travel_time']['max'], f"${stats['cost']}", f"{stats['safety']['max']}"],
+                [stats['travel_time']['avg'], f"${stats['cost']}", f"{stats['safety']['avg']}"],
             ],
             fill_color='white',
             align='left'
@@ -60,18 +59,14 @@ def create_top_locations_table(analysis_results: Dict[str, Any]) -> go.Figure:
     
     locations_table = go.Figure(data=[go.Table(
         header=dict(
-            values=['Rank', 'Neighborhood', 'Score', 'Travel Time', 'Cost', 'Safety'],
+            values=['Score'],
             fill_color='lightgreen',
             align='left'
         ),
         cells=dict(
             values=[
                 [i+1 for i in range(len(top_locations))],
-                [loc['neighborhood'] for loc in top_locations],
-                [f"{loc['score']:.2f}" for loc in top_locations],
-                [f"{loc['travel_time']:.0f} min" for loc in top_locations],
-                [f"${loc['cost']:.2f}" for loc in top_locations],
-                [loc['safety_grade'] for loc in top_locations]
+                [f"{loc['score']}" for loc in top_locations],
             ],
             fill_color='white',
             align='left'

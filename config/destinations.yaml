@@ -2,56 +2,21 @@
 # Regular destinations with flexible scheduling patterns
 
 destinations:
-  work:
-    - address: "789 Corporate Dr, Business District, ST"
-      name: "Main Office"
-      schedule:
-        # Standard weekly schedule
-        - days: "Mon-Fri"
-          arrival_time: "09:00"
-          departure_time: "17:00"
-        # Weekend work
-        - days: "Sat"
-          arrival_time: "10:00"
-          departure_time: "14:00"
-          
   personal:
-    - address: "321 Fitness St, Anytown, ST"
-      name: "Gym"
+    - address: "3630 Harry Hines Blvd, Dallas, TX 75219"
+      name: "Dallas Swing Dance Society"
       schedule:
-        # Specific weekdays
-        - days: "Mon,Wed,Fri"
-          arrival_time: "18:00"
-          departure_time: "19:30"
+        - days: "Sat"
+          arrival_time: "21:00"
+          departure_time: "23:30"
           
-    - address: "654 Market Blvd, Anytown, ST"
-      name: "Grocery Store"
+    - address: "3414 Elm St, Dallas, TX 75226"
+      name: "Sons of Hermann Hall"
       schedule:
-        # Weekly occurrence
-        - days: "Sun"
-          arrival_time: "10:00"
-          departure_time: "11:00"
+        - days: "Wed"
+          arrival_time: "21:00"
+          departure_time: "23:00"
           
-  monthly:
-    - address: "123 Medical Center Dr, Health City, ST"
-      name: "Doctor Appointment"
-      schedule:
-        # Monthly patterns
-        - pattern: "first_monday"
-          arrival_time: "14:00"
-          departure_time: "15:00"
-        - pattern: "third_friday"
-          arrival_time: "09:00"
-          departure_time: "10:00"
-          
-    - address: "456 Community Center Ave, Anytown, ST"
-      name: "Monthly Meeting"
-      schedule:
-        # Last occurrence patterns
-        - pattern: "last_saturday"
-          arrival_time: "19:00"
-          departure_time: "21:00"
-
 # Schedule Pattern Definitions:
 # Standard Patterns:
 #   - Mon-Fri: Monday through Friday
