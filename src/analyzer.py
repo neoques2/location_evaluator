@@ -10,6 +10,8 @@ from pathlib import Path
 from .core.grid_generator import AnalysisGrid
 from .core.scheduler import process_schedules
 from .models.data_structures import AnalysisResults, AnalysisMetadata, RegionalStatistics
+from .apis.osrm import OSRMClient
+from .apis.cache import get_cached_route, save_cached_route
 
 
 class LocationAnalyzer:
@@ -125,15 +127,17 @@ class LocationAnalyzer:
             self.logger.debug(f"  {category}: {count} schedules")
     
     def _calculate_routes(self) -> Dict[str, Any]:
-        """
-        Calculate routes for all grid points (placeholder implementation).
-        
-        Returns:
-            Route calculation results
-        """
-        # TODO: Implement actual route calculations using the OSRM service.
-        # This placeholder returns a mock data structure.
-        
+        """Calculate routes for all grid points using OSRM with caching."""
+
+        osrm_cfg = self.config['apis']['osrm']
+        osrm_client = OSRMClient(
+            base_url=osrm_cfg['base_url'],
+            timeout=osrm_cfg.get('timeout', 30),
+            requests_per_second=osrm_cfg.get('requests_per_second', 10),
+        )
+
+        use_cache = osrm_cfg.get('cache', True)
+
         route_data = {
             'total_api_calls': 0,
             'successful_calculations': 0,
@@ -141,8 +145,47 @@ class LocationAnalyzer:
             'cache_hits': 0,
             'routes': {}
         }
-        
-        self.logger.warning("Route calculation not yet implemented - using placeholder")
+
+        for _, row in self.grid.grid_df.iterrows():
+            origin = {'lat': row['lat'], 'lon': row['lon']}
+            for sched in self.schedules:
+                dest_address = sched['destination']
+                departure = sched.get('departure_time', '')
+                day = sched.get('day', sched.get('pattern', ''))
+                dest = {
+                    'lat': sched.get('lat', origin['lat']),
+                    'lon': sched.get('lon', origin['lon'])
+                }
+
+                cached = None
+                if use_cache and not self.force_refresh:
+                    cached = get_cached_route(origin['lat'], origin['lon'], dest_address, departure, day)
+
+                if cached:
+                    route_data['cache_hits'] += 1
+                    result = cached
+                else:
+                    if self.cache_only:
+                        route_data['failed_calculations'] += 1
+                        result = None
+                    else:
+                        result = osrm_client.route(origin, dest)
+                        route_data['total_api_calls'] += 1
+                        if result['status'] in {'OK', 'ESTIMATED'}:
+                            route_data['successful_calculations'] += 1
+                        else:
+                            route_data['failed_calculations'] += 1
+                        if use_cache:
+                            save_cached_route(
+                                origin['lat'], origin['lon'], dest_address,
+                                departure, day,
+                                result,
+                                cache_duration_days=self.output_config.get('cache_duration', 7)
+                            )
+
+                if result is not None:
+                    route_data['routes'].setdefault(row['point_id'], {})[dest_address] = result
+
         return route_data
     
     def _analyze_locations(self, route_data: Dict[str, Any]) -> List[Any]:

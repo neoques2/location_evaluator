@@ -4,6 +4,8 @@ apis:
   osrm:
     base_url: "http://localhost:5000"
     timeout: 30
+    requests_per_second: 10
+    cache: true
 
   fbi_crime:
     base_url: "https://api.usa.gov/crime/fbi/cde/"
