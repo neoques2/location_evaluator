@@ -25,9 +25,10 @@
 
 ### Phase 3: Analysis Engine
 - [x] Implement travel time calculations
-- [ ] Add transportation cost analysis
-- [ ] Implement safety scoring algorithm
-- [ ] Create composite scoring system
+- [x] Add transportation cost analysis
+- [x] Implement safety scoring algorithm
+- [ ] Calibrate safety scoring parameters
+- [x] Create composite scoring system
 - [ ] Add data validation and error handling
 
 ### Phase 4: Visualization
@@ -61,7 +62,7 @@ The following packages need to be installed (see `requirements.txt`):
 ## Configuration Tasks
 
 ### Required Configuration Updates
-- [ ] Replace center_point with actual location
+ - [x] Replace center_point with actual location
 - [ ] Customize destination addresses for real use case
 - [ ] Adjust transportation preferences
 - [ ] Fine-tune scoring weights

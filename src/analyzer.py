@@ -15,7 +15,20 @@ from .core.scheduler import (
     calculate_weekly_frequency,
     calculate_monthly_frequency,
 )
-from .models.data_structures import AnalysisResults, AnalysisMetadata, RegionalStatistics
+from .models.data_structures import (
+    AnalysisResults,
+    AnalysisMetadata,
+    RegionalStatistics,
+    CostTotals,
+    CostAnalysis,
+    TravelAnalysis,
+    SafetyAnalysis,
+    CompositeScore,
+    DestinationAnalysis,
+    Route,
+    GridPointAnalysis,
+    Location,
+)
 from .apis.osrm import OSRMClient
 from .apis.cache import get_cached_route, save_cached_route
 
@@ -211,7 +224,7 @@ class LocationAnalyzer:
         flush_batch()
 
         return route_data
-    
+
     def _analyze_locations(self, route_data: Dict[str, Any]) -> List[Any]:
         """
         Analyze locations and calculate scores.
@@ -223,17 +236,6 @@ class LocationAnalyzer:
             List of grid point analyses
         """
         from .apis.crime_data import get_crime_data
-        from .models.data_structures import (
-            Location,
-            TravelAnalysis,
-            CostTotals,
-            CostAnalysis,
-            SafetyAnalysis,
-            CompositeScore,
-            DestinationAnalysis,
-            Route,
-            GridPointAnalysis,
-        )
 
         analysis_results = []
         grid_df = self.grid.get_grid_dataframe()
@@ -302,14 +304,12 @@ class LocationAnalyzer:
                 destinations=dest_map,
             )
 
-            totals = CostTotals(0.0, 0.0, 0.0, 0.0)
-            cost = CostAnalysis(weekly_totals=totals, monthly_totals=totals)
+            cost = self._calculate_costs(
+                point_routes, weekly_freq, monthly_freq
+            )
 
-            comp = CompositeScore(
-                overall=max(0.0, 1.0 - safety.crime_score),
-                components={'safety': max(0.0, 1.0 - safety.crime_score)},
-                grade=safety.safety_grade,
-                rank_percentile=0,
+            comp = self._calculate_composite_score(
+                travel, cost, safety
             )
 
             analysis_results.append(
@@ -323,6 +323,85 @@ class LocationAnalyzer:
             )
 
         return analysis_results
+
+    def _calculate_costs(
+        self,
+        point_routes: Dict[str, Any],
+        weekly_freq: Dict[str, int],
+        monthly_freq: Dict[str, int],
+    ) -> CostAnalysis:
+        """Calculate transportation cost analysis for a grid point."""
+        cost_per_mile = (
+            self.transportation_config.get("driving", {}).get("cost_per_mile", 0.65)
+        )
+        transit_fare = (
+            self.transportation_config.get("transit", {}).get("base_fare", 2.75)
+        )
+        modes = self.transportation_config.get("modes", ["driving"])
+
+        weekly = CostTotals(0.0, 0.0, 0.0, 0.0)
+        monthly = CostTotals(0.0, 0.0, 0.0, 0.0)
+        breakdown: Dict[str, CostTotals] = {}
+
+        for dest, w_trips in weekly_freq.items():
+            route = point_routes.get(dest)
+            if not route:
+                continue
+            m_trips = monthly_freq.get(dest, 0)
+            dist = route.get("distance_miles", 0.0)
+
+            drive_w = dist * w_trips if "driving" in modes else 0.0
+            drive_m = dist * m_trips if "driving" in modes else 0.0
+            trans_w = transit_fare * w_trips if "transit" in modes else 0.0
+            trans_m = transit_fare * m_trips if "transit" in modes else 0.0
+
+            weekly.driving_miles += drive_w
+            weekly.transit_cost += trans_w
+            monthly.driving_miles += drive_m
+            monthly.transit_cost += trans_m
+
+            breakdown[dest] = CostTotals(drive_m, 0.0, 0.0, trans_m)
+
+        return CostAnalysis(weekly_totals=weekly, monthly_totals=monthly, breakdown_by_destination=breakdown)
+
+    def _calculate_composite_score(
+        self,
+        travel: TravelAnalysis,
+        cost: CostAnalysis,
+        safety: SafetyAnalysis,
+    ) -> CompositeScore:
+        """Combine component scores into a single composite score."""
+        weights = self.weights_config
+        cost_per_mile = (
+            self.transportation_config.get("driving", {}).get("cost_per_mile", 0.65)
+        )
+
+        monthly_cost = cost.monthly_totals.driving_miles * cost_per_mile + cost.monthly_totals.transit_cost
+
+        travel_score = max(0.0, 1.0 - travel.total_weekly_minutes / 3000.0)
+        cost_score = max(0.0, 1.0 - monthly_cost / 1000.0)
+        safety_score = max(0.0, 1.0 - safety.crime_score)
+
+        overall = (
+            travel_score * weights.get("travel_time", 0.4)
+            + cost_score * weights.get("travel_cost", 0.3)
+            + safety_score * weights.get("safety", 0.3)
+        )
+
+        from .apis.crime_data import score_to_grade
+
+        grade = score_to_grade(1.0 - overall)
+
+        return CompositeScore(
+            overall=overall,
+            components={
+                "travel_time": travel_score,
+                "travel_cost": cost_score,
+                "safety": safety_score,
+            },
+            grade=grade,
+            rank_percentile=0,
+        )
     
     def _compute_regional_statistics(self, analysis_results: List[Any]) -> RegionalStatistics:
         """
