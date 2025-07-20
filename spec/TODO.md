@@ -80,6 +80,7 @@ The following packages need to be installed (see `requirements.txt`):
 - [ ] Implement parallel API processing
 - [ ] Add memory usage monitoring
 - [ ] Optimize cache file formats
+- [x] Add OSRM client caching for route requests
 - [ ] Add progress indicators
 - [ ] Implement graceful interruption handling
 
