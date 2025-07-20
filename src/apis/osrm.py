@@ -56,7 +56,10 @@ class OSRMClient:
         url = f"{self.base_url}/table/v1/{profile}/{coord_str}?sources={sources}&destinations={dests}&annotations=distance,duration"
 
         try:
-            resp = requests.get(url, timeout=self.timeout)
+            self.rate_limiter.wait_if_needed()
+            resp = self.api_handler.call_with_retry(
+                lambda: requests.get(url, timeout=self.timeout)
+            )
             resp.raise_for_status()
             data = resp.json()
             if 'durations' in data and 'distances' in data:
