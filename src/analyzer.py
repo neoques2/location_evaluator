@@ -334,13 +334,41 @@ class LocationAnalyzer:
         Returns:
             Regional statistics summary
         """
-        # TODO: Implement actual regional statistics calculation
-        # This is a placeholder
-        
-        regional_stats = RegionalStatistics()
-        
-        self.logger.warning("Regional statistics not yet implemented - using placeholder")
-        return regional_stats
+        if not analysis_results:
+            return RegionalStatistics()
+
+        travel_times = [p.travel_analysis.total_weekly_minutes for p in analysis_results]
+        crime_scores = [p.safety_analysis.crime_score for p in analysis_results]
+        comp_scores = [p.composite_score.overall for p in analysis_results]
+
+        best = sorted(analysis_results, key=lambda p: p.composite_score.overall, reverse=True)[:5]
+        best_locations = [
+            {
+                'lat': b.location.lat,
+                'lon': b.location.lon,
+                'score': b.composite_score.overall,
+            }
+            for b in best
+        ]
+
+        return RegionalStatistics(
+            travel_time={
+                'min': min(travel_times),
+                'max': max(travel_times),
+                'avg': sum(travel_times) / len(travel_times),
+            },
+            safety={
+                'min': min(crime_scores),
+                'max': max(crime_scores),
+                'avg': sum(crime_scores) / len(crime_scores),
+            },
+            composite={
+                'min': min(comp_scores),
+                'max': max(comp_scores),
+                'avg': sum(comp_scores) / len(comp_scores),
+            },
+            best_locations=best_locations,
+        )
     
     def _create_metadata(self) -> AnalysisMetadata:
         """Create analysis metadata."""

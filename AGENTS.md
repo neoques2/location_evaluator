@@ -8,3 +8,4 @@
 - Avoid passing data via raw strings if structured types fit better.
 - Follow DRY and prefer clear abstractions.
 - Future commits should update this file with additional findings.
+- The project TODO list is in `spec/TODO.md`. Update it when tasks are completed.
