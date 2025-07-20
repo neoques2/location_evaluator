@@ -64,9 +64,10 @@ def get_crime_data(lat: float, lon: float, radius_miles: float = 0.5) -> Dict[st
     population_density = get_population_density(lat, lon)
     
     safety_score = calculate_safety_score(
-        violent_crimes, 
-        property_crimes, 
-        population_density
+        violent_crimes,
+        property_crimes,
+        other_crimes,
+        population_density,
     )
     
     return {
@@ -177,20 +178,30 @@ def get_population_density(lat: float, lon: float) -> float:
     return 1000.0  # Placeholder
 
 
-def calculate_safety_score(violent_crimes: int, property_crimes: int, population_density: float) -> float:
+def calculate_safety_score(
+    violent_crimes: int,
+    property_crimes: int,
+    other_crimes: int,
+    population_density: float,
+) -> float:
     """
     Calculate normalized safety score from crime statistics.
     
     Args:
         violent_crimes: Count of violent crimes
         property_crimes: Count of property crimes
+        other_crimes: Count of other crimes
         population_density: Population density for normalization
         
     Returns:
         Safety score (0-1 scale, lower is safer)
     """
     # Weight violent crimes more heavily than property crimes
-    weighted_crimes = (violent_crimes * 2.0) + (property_crimes * 1.0)
+    weighted_crimes = (
+        violent_crimes * 2.0
+        + property_crimes * 1.0
+        + other_crimes * 0.5
+    )
     
     # Normalize by population density
     normalized_crimes = weighted_crimes / max(population_density / 1000, 1)

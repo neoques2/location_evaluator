@@ -6,7 +6,9 @@ transportation:
   driving:
     avoid_tolls: false
     avoid_highways: false
+    cost_per_mile: 0.65      # IRS mileage rate
   transit:
     include_costs: true
+    base_fare: 2.75          # default transit fare per trip
   walking:
     max_distance: 2.0         # miles - don't calculate walking beyond this

@@ -11,6 +11,7 @@
 - Avoid passing data via raw strings if structured types fit better.
 - Follow DRY and prefer clear abstractions.
 - Use appropriate abstractions.
+- Safety scoring now uses weighted crime types and population density.
 
 # Info
 - Install dependencies with `pip install -r requirements.txt` before running tests.
@@ -44,4 +45,4 @@
 ...
 
 # Previous User Requests
-...
+- Added request to continue TODO implementation and execute process/meta loops (2025-07-20)
