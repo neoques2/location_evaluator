@@ -34,7 +34,9 @@ def process_schedules(config: Dict[str, Any]) -> List[Dict[str, Any]]:
                             'departure_time': schedule_item['arrival_time'],
                             'day': day,
                             'frequency': 'weekly',
-                            'annual_occurrences': 52
+                            'annual_occurrences': 52,
+                            'lat': destination.get('lat'),
+                            'lon': destination.get('lon'),
                         })
                         
                 elif 'pattern' in schedule_item:
@@ -46,7 +48,9 @@ def process_schedules(config: Dict[str, Any]) -> List[Dict[str, Any]]:
                         'departure_time': schedule_item['arrival_time'],
                         'pattern': schedule_item['pattern'],
                         'frequency': 'monthly',
-                        'annual_occurrences': 12
+                        'annual_occurrences': 12,
+                        'lat': destination.get('lat'),
+                        'lon': destination.get('lon'),
                     })
     
     return schedules
