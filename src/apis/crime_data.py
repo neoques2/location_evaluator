@@ -33,7 +33,15 @@ class CrimeStats:
     safety_grade: str       # A+ to F scale
 
 
-def get_crime_data(lat: float, lon: float, radius_miles: float = 0.5) -> Dict[str, Any]:
+def get_crime_data(
+    lat: float,
+    lon: float,
+    radius_miles: float = 0.5,
+    *,
+    weights: Optional[Dict[str, float]] = None,
+    density_scale: float = 1000.0,
+    score_scale: float = 10.0,
+) -> Dict[str, Any]:
     """
     Get crime statistics for area around location.
     
@@ -41,6 +49,9 @@ def get_crime_data(lat: float, lon: float, radius_miles: float = 0.5) -> Dict[st
         lat: Latitude of location
         lon: Longitude of location
         radius_miles: Radius around location to search (default 0.5 miles)
+        weights: Optional weighting for crime types
+        density_scale: Population density normalization factor
+        score_scale: Divisor for final score scaling
         
     Returns:
         Dictionary containing crime statistics and safety score
@@ -68,6 +79,9 @@ def get_crime_data(lat: float, lon: float, radius_miles: float = 0.5) -> Dict[st
         property_crimes,
         other_crimes,
         population_density,
+        weights=weights,
+        density_scale=density_scale,
+        score_scale=score_scale,
     )
     
     return {
@@ -181,9 +195,13 @@ def get_population_density(lat: float, lon: float) -> float:
 def calculate_safety_score(
     violent_crimes: int,
     property_crimes: int,
-    other_crimes: int,
-    population_density: float,
-) -> float:
+        other_crimes: int,
+        population_density: float,
+        *,
+        weights: Optional[Dict[str, float]] = None,
+        density_scale: float = 1000.0,
+        score_scale: float = 10.0,
+    ) -> float:
     """
     Calculate normalized safety score from crime statistics.
     
@@ -192,23 +210,27 @@ def calculate_safety_score(
         property_crimes: Count of property crimes
         other_crimes: Count of other crimes
         population_density: Population density for normalization
+        weights: Optional weighting for crime types
+        density_scale: Normalization factor for population density
+        score_scale: Divisor for final score scaling
         
     Returns:
         Safety score (0-1 scale, lower is safer)
     """
     # Weight violent crimes more heavily than property crimes
+    w = weights or {'violent': 2.0, 'property': 1.0, 'other': 0.5}
     weighted_crimes = (
-        violent_crimes * 2.0
-        + property_crimes * 1.0
-        + other_crimes * 0.5
+        violent_crimes * w.get('violent', 2.0)
+        + property_crimes * w.get('property', 1.0)
+        + other_crimes * w.get('other', 0.5)
     )
     
     # Normalize by population density
-    normalized_crimes = weighted_crimes / max(population_density / 1000, 1)
+    normalized_crimes = weighted_crimes / max(population_density / density_scale, 1)
     
     # Convert to 0-1 scale (this is a simplified approach)
     # In practice, you'd want to calibrate this against regional averages
-    safety_score = min(normalized_crimes / 10.0, 1.0)
+    safety_score = min(normalized_crimes / score_scale, 1.0)
     
     return safety_score
 

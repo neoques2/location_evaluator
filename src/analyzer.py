@@ -79,6 +79,9 @@ class LocationAnalyzer:
         # Phase 2: Schedule Processing
         self.logger.info("Phase 2: Processing destination schedules")
         self._process_schedules()
+
+        # Validate required inputs
+        self._validate_inputs()
         
         # Phase 3: Route Calculations (placeholder for now)
         self.logger.info("Phase 3: Calculating routes")
@@ -144,6 +147,13 @@ class LocationAnalyzer:
         self.logger.info(f"Processed {total_schedules} schedule items")
         for category, count in schedule_summary.items():
             self.logger.debug(f"  {category}: {count} schedules")
+
+    def _validate_inputs(self) -> None:
+        """Validate that grid and schedules are available."""
+        if self.grid is None or self.grid.get_grid_dataframe().empty:
+            raise ValueError("Analysis grid is empty")
+        if not self.schedules:
+            raise ValueError("No schedules provided")
     
     def _calculate_routes(self) -> Dict[str, Any]:
         """
@@ -244,13 +254,28 @@ class LocationAnalyzer:
         monthly_freq = calculate_monthly_frequency(schedules)
         dest_meta = {s['destination']: {'name': s['destination_name'], 'category': s['category'], 'departure': s.get('departure_time', '')} for s in schedules}
 
-        route_map = route_data.get('routes', {}) if isinstance(route_data, dict) else {}
+        if not isinstance(route_data, dict):
+            raise ValueError("route_data must be a dict")
+
+        route_map = route_data.get('routes', {})
+
+        safety_params = self.weights_config.get('safety_parameters', {})
 
         for _, row in grid_df.iterrows():
             lat = float(row['lat'])
             lon = float(row['lon'])
 
-            crime_stats = get_crime_data(lat, lon)
+            crime_stats = get_crime_data(
+                lat,
+                lon,
+                weights={
+                    'violent': safety_params.get('violent_weight', 2.0),
+                    'property': safety_params.get('property_weight', 1.0),
+                    'other': safety_params.get('other_weight', 0.5),
+                },
+                density_scale=safety_params.get('density_scale', 1000.0),
+                score_scale=safety_params.get('score_scale', 10.0),
+            )
 
             safety = SafetyAnalysis(
                 crime_score=crime_stats['crime_score'],
@@ -481,17 +506,12 @@ class LocationAnalyzer:
     
     def _generate_html_output(self, results: AnalysisResults, output_path: str) -> None:
         """Generate HTML dashboard output."""
+        from dataclasses import asdict
+        from .visualization.dashboard import generate_interactive_map
+
         try:
-            # TODO: Implement dashboard generation
-            # generate_dashboard(results, self.config, output_path)
-            
-            # For now, create a simple HTML file
-            html_content = self._create_placeholder_html(results)
-            
             html_path = output_path if output_path.endswith('.html') else f"{output_path}.html"
-            with open(html_path, 'w', encoding='utf-8') as f:
-                f.write(html_content)
-            
+            generate_interactive_map(asdict(results), html_path)
             self.logger.info(f"HTML output generated: {html_path}")
             
         except Exception as e:
@@ -500,26 +520,12 @@ class LocationAnalyzer:
     
     def _generate_json_output(self, results: AnalysisResults, output_path: str) -> None:
         """Generate JSON data export."""
-        import json
-        
+        from dataclasses import asdict
+        from .visualization.dashboard import create_data_export
+
         try:
-            # TODO: Implement proper JSON serialization of results
-            json_data = {
-                'metadata': {
-                    'generated': results.analysis_metadata.generated,
-                    'grid_size': results.analysis_metadata.grid_size,
-                    'total_points': results.analysis_metadata.total_points,
-                    'center_point': results.analysis_metadata.center_point,
-                    'bounds': results.analysis_metadata.bounds
-                },
-                'grid_points': [],  # TODO: Serialize grid point data
-                'regional_statistics': {}  # TODO: Serialize regional stats
-            }
-            
             json_path = output_path.replace('.html', '.json') if output_path.endswith('.html') else f"{output_path}.json"
-            with open(json_path, 'w', encoding='utf-8') as f:
-                json.dump(json_data, f, indent=2)
-            
+            create_data_export(asdict(results), json_path)
             self.logger.info(f"JSON output generated: {json_path}")
             
         except Exception as e:

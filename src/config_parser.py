@@ -332,6 +332,18 @@ class ConfigParser:
         total = sum(weights[w] for w in required_weights)
         if abs(total - 1.0) > 0.001:
             raise ConfigValidationError(f"Weights must sum to 1.0, got {total}")
+
+        # Optional safety parameter calibration
+        params = weights.get('safety_parameters', {})
+        if params:
+            for field in ['violent_weight', 'property_weight', 'other_weight',
+                           'density_scale', 'score_scale']:
+                if field not in params:
+                    raise ConfigValidationError(f"Missing safety parameter: {field}")
+                val = params[field]
+                if not isinstance(val, (int, float)) or val <= 0:
+                    raise ConfigValidationError(
+                        f"Safety parameter {field} must be positive number")
     
     def _validate_output_config(self, output: Dict[str, Any]) -> None:
         """Validate output configuration."""
