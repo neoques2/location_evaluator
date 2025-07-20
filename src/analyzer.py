@@ -5,6 +5,7 @@ Orchestrates the complete analysis workflow from grid generation to output.
 
 import logging
 from typing import Dict, Any, List
+import pandas as pd
 from pathlib import Path
 
 from .apis.osrm import OSRMClient
@@ -251,99 +252,181 @@ class LocationAnalyzer:
         """
         from .apis.crime_data import get_crime_data
 
-        analysis_results = []
-        grid_df = self.grid.get_grid_dataframe()
-        schedules = self.schedules or []
-        weekly_freq = calculate_weekly_frequency(schedules)
-        monthly_freq = calculate_monthly_frequency(schedules)
-        dest_meta = {s['destination']: {'name': s['destination_name'], 'category': s['category'], 'departure': s.get('departure_time', '')} for s in schedules}
-
         if not isinstance(route_data, dict):
             raise ValueError("route_data must be a dict")
 
-        route_map = route_data.get('routes', {})
-
+        grid_df = self.grid.get_grid_dataframe()
+        schedules_df = pd.DataFrame(self.schedules or [])
         safety_params = self.weights_config.get('safety_parameters', {})
 
-        for _, row in grid_df.iterrows():
-            lat = float(row['lat'])
-            lon = float(row['lon'])
+        if schedules_df.empty:
+            weekly_map = pd.Series(dtype=float)
+            monthly_map = pd.Series(dtype=float)
+            dest_meta = pd.DataFrame()
+        else:
+            weekly_map = schedules_df.assign(
+                weight=schedules_df['frequency'].map({'weekly': 1.0, 'monthly': 12/52})
+            ).groupby('destination')['weight'].sum()
+            monthly_map = schedules_df.assign(
+                weight=schedules_df['frequency'].map({'weekly': 52/12, 'monthly': 1.0})
+            ).groupby('destination')['weight'].sum()
+            dest_meta = schedules_df[
+                ['destination', 'destination_name', 'category', 'departure_time']
+            ].drop_duplicates().set_index('destination')
 
-            crime_stats = get_crime_data(
-                lat,
-                lon,
-                weights={
-                    'violent': safety_params.get('violent_weight', 2.0),
-                    'property': safety_params.get('property_weight', 1.0),
-                    'other': safety_params.get('other_weight', 0.5),
-                },
+        route_records = []
+        for pid, dests in route_data.get('routes', {}).items():
+            for dest, r in dests.items():
+                route_records.append({
+                    'point_id': pid,
+                    'destination': dest,
+                    'duration_min': r.get('duration_seconds', 0) / 60,
+                    'distance_miles': r.get('distance_miles', 0),
+                })
+
+        routes_df = pd.DataFrame(route_records)
+        if routes_df.empty:
+            df = grid_df.copy()
+            df['weekly_minutes'] = 0.0
+            df['monthly_minutes'] = 0.0
+            df['drive_monthly_miles'] = 0.0
+            df['transit_monthly_cost'] = 0.0
+        else:
+            freq_df = pd.DataFrame({
+                'destination': weekly_map.index,
+                'weekly_trips': weekly_map.values,
+                'monthly_trips': monthly_map.reindex(weekly_map.index).fillna(0).values,
+            })
+
+            merged = routes_df.merge(freq_df, on='destination', how='left')
+
+            merged['weekly_minutes'] = merged['duration_min'] * merged['weekly_trips']
+            merged['monthly_minutes'] = merged['duration_min'] * merged['monthly_trips']
+
+            transit_fare = self.transportation_config.get('transit', {}).get('base_fare', 2.75)
+            merged['drive_monthly_miles'] = merged['distance_miles'] * merged['monthly_trips']
+            merged['transit_monthly_cost'] = merged['monthly_trips'] * transit_fare
+
+            agg = merged.groupby('point_id').agg(
+                weekly_minutes=('weekly_minutes', 'sum'),
+                monthly_minutes=('monthly_minutes', 'sum'),
+                drive_monthly_miles=('drive_monthly_miles', 'sum'),
+                transit_monthly_cost=('transit_monthly_cost', 'sum'),
+            ).reset_index()
+
+            df = grid_df.merge(agg, on='point_id', how='left').fillna(0)
+
+
+        weights = {
+            'violent': safety_params.get('violent_weight', 2.0),
+            'property': safety_params.get('property_weight', 1.0),
+            'other': safety_params.get('other_weight', 0.5),
+        }
+
+        tqdm.pandas(desc="Crime")
+        crime_stats = df.progress_apply(
+            lambda r: get_crime_data(
+                r.lat,
+                r.lon,
+                weights=weights,
                 density_scale=safety_params.get('density_scale', 1000.0),
                 score_scale=safety_params.get('score_scale', 10.0),
-            )
+            ),
+            axis=1,
+        )
 
-            safety = SafetyAnalysis(
-                crime_score=crime_stats['crime_score'],
-                nearby_incidents=crime_stats['incident_count'],
-                safety_grade=crime_stats['safety_grade'],
-                violent_crimes=crime_stats['violent_crimes'],
-                property_crimes=crime_stats['property_crimes'],
-                other_crimes=crime_stats['other_crimes'],
-                crime_types={
-                    'violent': crime_stats['violent_crimes'],
-                    'property': crime_stats['property_crimes'],
-                    'other': crime_stats['other_crimes'],
-                },
-            )
+        crime_df = pd.DataFrame(crime_stats.tolist())
+        df = pd.concat([df, crime_df], axis=1)
 
+        cost_per_mile = self.transportation_config.get('driving', {}).get('cost_per_mile', 0.65)
+        weights_cfg = self.weights_config
+
+        travel_score = (1.0 - df['weekly_minutes'] / 3000.0).clip(lower=0.0)
+        monthly_cost = df['drive_monthly_miles'] * cost_per_mile + df['transit_monthly_cost']
+        cost_score = (1.0 - monthly_cost / 1000.0).clip(lower=0.0)
+        safety_score_comp = (1.0 - df['crime_score']).clip(lower=0.0)
+
+        overall = (
+            travel_score * weights_cfg.get('travel_time', 0.4)
+            + cost_score * weights_cfg.get('travel_cost', 0.3)
+            + safety_score_comp * weights_cfg.get('safety', 0.3)
+        )
+
+        from .apis.crime_data import score_to_grade
+
+        df['overall'] = overall
+        df['grade'] = df['overall'].apply(lambda x: score_to_grade(1.0 - x))
+        df['rank_percentile'] = df['overall'].rank(pct=True) * 100
+
+        analysis_results = []
+        for _, row in df.iterrows():
+            point_routes = route_data.get('routes', {}).get(row.point_id, {})
             dest_map: Dict[str, Dict[str, DestinationAnalysis]] = {}
-            total_weekly = 0.0
-            total_monthly = 0.0
-
-            point_routes = route_map.get(row.point_id, {})
-            for dest_addr, freq in weekly_freq.items():
-                route = point_routes.get(dest_addr)
-                if not route:
-                    continue
-                meta = dest_meta[dest_addr]
-                w_trips = freq
-                m_trips = monthly_freq.get(dest_addr, 0)
-                avg_minutes = route['duration_seconds'] / 60
-                weekly_time = avg_minutes * w_trips
-                total_weekly += weekly_time
-                total_monthly += avg_minutes * m_trips
-
-                analysis = DestinationAnalysis(
-                    weekly_trips=int(round(w_trips)),
-                    monthly_trips=int(round(m_trips)),
-                    avg_travel_time=avg_minutes,
-                    total_weekly_time=weekly_time,
-                    routes=[Route(
-                        departure_time=meta['departure'],
-                        arrival_time=meta['departure'],
-                        mode='driving',
-                        duration=int(avg_minutes),
-                        distance=route['distance_miles'],
-                    )],
-                )
-                dest_map.setdefault(meta['category'], {})[meta['name']] = analysis
+            if not dest_meta.empty:
+                for dest_addr, w_trips in weekly_map.items():
+                    route = point_routes.get(dest_addr)
+                    if not route:
+                        continue
+                    if dest_addr not in dest_meta.index:
+                        continue
+                    meta = dest_meta.loc[dest_addr]
+                    m_trips = monthly_map.get(dest_addr, 0)
+                    avg_minutes = route['duration_seconds'] / 60
+                    analysis = DestinationAnalysis(
+                        weekly_trips=int(round(w_trips)),
+                        monthly_trips=int(round(m_trips)),
+                        avg_travel_time=avg_minutes,
+                        total_weekly_time=avg_minutes * w_trips,
+                        routes=[Route(
+                            departure_time=meta['departure_time'],
+                            arrival_time=meta['departure_time'],
+                            mode='driving',
+                            duration=int(avg_minutes),
+                            distance=route['distance_miles'],
+                        )],
+                    )
+                    dest_map.setdefault(meta['category'], {})[meta['destination_name']] = analysis
 
             travel = TravelAnalysis(
-                total_weekly_minutes=int(round(total_weekly)),
-                total_monthly_minutes=int(round(total_monthly)),
+                total_weekly_minutes=int(round(row.weekly_minutes)),
+                total_monthly_minutes=int(round(row.monthly_minutes)),
                 destinations=dest_map,
             )
 
-            cost = self._calculate_costs(
-                point_routes, weekly_freq, monthly_freq
+            cost = CostAnalysis(
+                weekly_totals=CostTotals(0.0, 0.0, 0.0, 0.0),
+                monthly_totals=CostTotals(row.drive_monthly_miles, 0.0, 0.0, row.transit_monthly_cost),
+                breakdown_by_destination={},
             )
 
-            comp = self._calculate_composite_score(
-                travel, cost, safety
+            safety = SafetyAnalysis(
+                crime_score=row.crime_score,
+                nearby_incidents=row.incident_count,
+                safety_grade=row.safety_grade,
+                violent_crimes=row.violent_crimes,
+                property_crimes=row.property_crimes,
+                other_crimes=row.other_crimes,
+                crime_types={
+                    'violent': row.violent_crimes,
+                    'property': row.property_crimes,
+                    'other': row.other_crimes,
+                },
+            )
+
+            comp = CompositeScore(
+                overall=row.overall,
+                components={
+                    'travel_time': travel_score.loc[_],
+                    'travel_cost': cost_score.loc[_],
+                    'safety': safety_score_comp.loc[_],
+                },
+                grade=row.grade,
+                rank_percentile=int(row.rank_percentile),
             )
 
             analysis_results.append(
                 GridPointAnalysis(
-                    location=Location(lat=lat, lon=lon, address=f"{lat},{lon}"),
+                    location=Location(lat=row.lat, lon=row.lon, address=f"{row.lat},{row.lon}"),
                     travel_analysis=travel,
                     cost_analysis=cost,
                     safety_analysis=safety,

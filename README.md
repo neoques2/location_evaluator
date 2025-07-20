@@ -42,7 +42,7 @@ See the files in the `config/` directory for examples.
 Analysis results include location info, travel time and distance, cost, safety statistics and a composite score for each grid point. Data classes for these structures live in `src/models/data_structures.py`.
 
 ## Visualization Notes
-`src/visualization` contains helpers for Plotly maps and simple dashboards. Layers for travel time, cost, safety and composite score can be toggled. Destinations are always visible for context.
+`src/visualization` contains helpers for Plotly maps and simple dashboards. Layers for travel time, cost, safety, individual crime types and composite score can be toggled. Destinations are always visible for context.
 
 ## Roadmap
 ### Completed
@@ -115,6 +115,7 @@ python main.py --cache-only --output outputs/example.html
 - [x] Create summary statistics tables
 - [x] Add top locations ranking
 - [x] Generate HTML dashboard output
+- [x] Add crime type heatmap layers
 
 ### Phase 5: Testing & Polish
 - [x] Add comprehensive unit tests
@@ -167,7 +168,8 @@ The following packages need to be installed (see `requirements.txt`):
 - [ ] Add memory usage monitoring
 - [ ] Optimize cache file formats
 - [x] Add OSRM client caching for route requests
-- [ ] Add progress indicators
+ - [x] Add progress indicators
+- [x] Vectorize analysis calculations with pandas
 - [ ] Implement graceful interruption handling
 
 ### Error Recovery
