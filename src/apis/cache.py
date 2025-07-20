@@ -206,6 +206,46 @@ def save_cached_route(origin_lat: float, origin_lon: float, destination_address:
         json.dump(cache_data, f, indent=2)
 
 
+def get_cached_osrm_route(origin_lat: float, origin_lon: float,
+                          dest_lat: float, dest_lon: float,
+                          profile: str = "driving") -> Optional[Dict[str, Any]]:
+    """Retrieve cached OSRM route by coordinate pair if available."""
+    cache_key = f"osrm_{origin_lat:.4f}_{origin_lon:.4f}_{dest_lat:.4f}_{dest_lon:.4f}_{profile}"
+    cache_file = get_cache_file_path(origin_lat, origin_lon, cache_key)
+
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, "r") as f:
+                data = json.load(f)
+                if not is_expired(data["cache_info"]["expires"]):
+                    return data["route_data"]
+        except (json.JSONDecodeError, KeyError):
+            os.remove(cache_file)
+    return None
+
+
+def save_cached_osrm_route(origin_lat: float, origin_lon: float,
+                           dest_lat: float, dest_lon: float,
+                           route_data: Dict[str, Any], profile: str = "driving",
+                           cache_duration_days: int = 7) -> None:
+    """Save OSRM route to cache."""
+    cache_key = f"osrm_{origin_lat:.4f}_{origin_lon:.4f}_{dest_lat:.4f}_{dest_lon:.4f}_{profile}"
+    cache_file = get_cache_file_path(origin_lat, origin_lon, cache_key)
+    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+    cache_data = {
+        "cache_info": {
+            "created": datetime.now().isoformat(),
+            "expires": (datetime.now() + timedelta(days=cache_duration_days)).isoformat(),
+            "origin": {"lat": origin_lat, "lon": origin_lon},
+            "destination": {"lat": dest_lat, "lon": dest_lon},
+            "profile": profile,
+        },
+        "route_data": route_data,
+    }
+    with open(cache_file, "w") as f:
+        json.dump(cache_data, f, indent=2)
+
+
 def get_cache_file_path(lat: float, lon: float, cache_key: str) -> str:
     """
     Generate cache file path based on coordinates.

@@ -168,6 +168,9 @@ class LocationAnalyzer:
             base_url=osrm_cfg.get('base_url', 'http://localhost:5000'),
             timeout=osrm_cfg.get('timeout', 30),
             requests_per_second=osrm_cfg.get('requests_per_second', 10),
+            use_cache=osrm_cfg.get('cache', True),
+            cache_duration_days=self.output_config.get('cache_duration', 7),
+            force_refresh=self.force_refresh,
         )
         batch_size = osrm_cfg.get('batch_size', 50)
 
