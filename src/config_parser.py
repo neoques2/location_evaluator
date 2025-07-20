@@ -301,6 +301,11 @@ class ConfigParser:
         if 'cache' in osrm_cfg and not isinstance(osrm_cfg['cache'], bool):
             raise ConfigValidationError("OSRM cache must be boolean")
 
+        if 'batch_size' in osrm_cfg:
+            bs = osrm_cfg['batch_size']
+            if not isinstance(bs, int) or bs <= 0:
+                raise ConfigValidationError("OSRM batch_size must be positive integer")
+
         if 'fbi_crime' not in apis:
             raise ConfigValidationError("API config missing fbi_crime section")
 

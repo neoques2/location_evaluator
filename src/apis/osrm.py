@@ -1,6 +1,6 @@
 import math
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 import requests
 from .rate_limiter import RateLimiter, APIHandler
@@ -43,6 +43,45 @@ class OSRMClient:
             'duration_seconds': self._estimate_duration(distance),
             'status': 'ESTIMATED'
         }
+
+    def route_batch(self, origins: List[Dict[str, float]], destinations: List[Dict[str, float]], profile: str = "driving") -> List[Dict[str, Any]]:
+        """Calculate multiple routes using the OSRM /table API."""
+        if len(origins) != len(destinations):
+            raise ValueError("origins and destinations must have same length")
+
+        coords = origins + destinations
+        coord_str = ';'.join(f"{c['lon']},{c['lat']}" for c in coords)
+        sources = ';'.join(str(i) for i in range(len(origins)))
+        dests = ';'.join(str(len(origins) + i) for i in range(len(destinations)))
+        url = f"{self.base_url}/table/v1/{profile}/{coord_str}?sources={sources}&destinations={dests}&annotations=distance,duration"
+
+        try:
+            resp = requests.get(url, timeout=self.timeout)
+            resp.raise_for_status()
+            data = resp.json()
+            if 'durations' in data and 'distances' in data:
+                results = []
+                for i in range(len(origins)):
+                    dist = data['distances'][i][i]
+                    dur = data['durations'][i][i]
+                    results.append({
+                        'distance_miles': dist * 0.000621371,
+                        'duration_seconds': dur,
+                        'status': 'OK',
+                    })
+                return results
+        except Exception as e:
+            self.logger.warning(f"OSRM batch request failed: {e}; using fallback")
+
+        results = []
+        for o, d in zip(origins, destinations):
+            distance = self._haversine(o['lat'], o['lon'], d['lat'], d['lon'])
+            results.append({
+                'distance_miles': distance,
+                'duration_seconds': self._estimate_duration(distance),
+                'status': 'ESTIMATED',
+            })
+        return results
 
     def _haversine(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])

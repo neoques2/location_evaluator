@@ -7,6 +7,8 @@ import logging
 from typing import Dict, Any, List
 from pathlib import Path
 
+from .apis.osrm import OSRMClient
+
 from .core.grid_generator import AnalysisGrid
 from .core.scheduler import process_schedules
 from .models.data_structures import AnalysisResults, AnalysisMetadata, RegionalStatistics
@@ -127,15 +129,21 @@ class LocationAnalyzer:
             self.logger.debug(f"  {category}: {count} schedules")
     
     def _calculate_routes(self) -> Dict[str, Any]:
-        """Calculate routes for all grid points using OSRM with caching."""
+        """
+        Calculate routes for all grid points using the OSRM service.
 
-        osrm_cfg = self.config['apis']['osrm']
-        osrm_client = OSRMClient(
-            base_url=osrm_cfg['base_url'],
-            timeout=osrm_cfg.get('timeout', 30),
-            requests_per_second=osrm_cfg.get('requests_per_second', 10),
+        Returns:
+            Route calculation results
+        """
+        osrm_cfg = self.config.get('apis', {}).get('osrm', {})
+        client = OSRMClient(
+            base_url=osrm_cfg.get('base_url', 'http://localhost:5000'),
+            timeout=osrm_cfg.get('timeout', 30)
         )
+        batch_size = osrm_cfg.get('batch_size', 50)
 
+        grid_df = self.grid.get_grid_dataframe()
+        center = {'lat': self.grid.center_lat, 'lon': self.grid.center_lon}
         use_cache = osrm_cfg.get('cache', True)
 
         route_data = {
@@ -146,45 +154,28 @@ class LocationAnalyzer:
             'routes': {}
         }
 
-        for _, row in self.grid.grid_df.iterrows():
-            origin = {'lat': row['lat'], 'lon': row['lon']}
-            for sched in self.schedules:
-                dest_address = sched['destination']
-                departure = sched.get('departure_time', '')
-                day = sched.get('day', sched.get('pattern', ''))
-                dest = {
-                    'lat': sched.get('lat', origin['lat']),
-                    'lon': sched.get('lon', origin['lon'])
-                }
+        origins: List[Dict[str, float]] = []
+        destinations: List[Dict[str, float]] = []
+        ids: List[int] = []
 
-                cached = None
-                if use_cache and not self.force_refresh:
-                    cached = get_cached_route(origin['lat'], origin['lon'], dest_address, departure, day)
+        for idx, row in enumerate(grid_df.itertuples(), 1):
+            origins.append({'lat': row.lat, 'lon': row.lon})
+            destinations.append(center)
+            ids.append(row.point_id)
 
-                if cached:
-                    route_data['cache_hits'] += 1
-                    result = cached
-                else:
-                    if self.cache_only:
-                        route_data['failed_calculations'] += 1
-                        result = None
+            if len(origins) == batch_size or idx == len(grid_df):
+                results = client.route_batch(origins, destinations)
+                route_data['total_api_calls'] += 1
+                for pid, res in zip(ids, results):
+                    route_data['routes'][pid] = res
+                    if res['status'] == 'OK':
+                        route_data['successful_calculations'] += 1
                     else:
-                        result = osrm_client.route(origin, dest)
-                        route_data['total_api_calls'] += 1
-                        if result['status'] in {'OK', 'ESTIMATED'}:
-                            route_data['successful_calculations'] += 1
-                        else:
-                            route_data['failed_calculations'] += 1
-                        if use_cache:
-                            save_cached_route(
-                                origin['lat'], origin['lon'], dest_address,
-                                departure, day,
-                                result,
-                                cache_duration_days=self.output_config.get('cache_duration', 7)
-                            )
+                        route_data['failed_calculations'] += 1
 
-                if result is not None:
-                    route_data['routes'].setdefault(row['point_id'], {})[dest_address] = result
+                origins = []
+                destinations = []
+                ids = []
 
         return route_data
     
