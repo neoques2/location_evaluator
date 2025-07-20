@@ -43,7 +43,12 @@ def test_cached_route_used(tmp_path):
 
 
 def test_rate_limiter_delay():
-    client = OSRMClient(base_url="http://invalid.local", requests_per_second=2, api_handler=APIHandler(retry_count=1))
+    client = OSRMClient(
+        base_url="http://invalid.local",
+        requests_per_second=2,
+        api_handler=APIHandler(retry_count=1),
+        use_cache=False,
+    )
     origin = {'lat': 40.0, 'lon': -75.0}
     dest = {'lat': 40.1, 'lon': -75.1}
     start = time.time()
