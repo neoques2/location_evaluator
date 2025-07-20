@@ -6,6 +6,7 @@ Handles local caching of route calculations to minimize API usage.
 import os
 import json
 import hashlib
+import gzip
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 
@@ -26,7 +27,7 @@ def get_cached_geocoding(address: str) -> Optional[Dict[str, Any]]:
     
     if os.path.exists(cache_file):
         try:
-            with open(cache_file, 'r') as f:
+            with gzip.open(cache_file, 'rt') as f:
                 data = json.load(f)
                 if not is_expired(data['cache_info']['expires']):
                     return data['geocoding_data']
@@ -65,7 +66,7 @@ def save_cached_geocoding(address: str, geocoding_data: Dict[str, Any],
     }
     
     # Save to file
-    with open(cache_file, 'w') as f:
+    with gzip.open(cache_file, 'wt') as f:
         json.dump(cache_data, f, indent=2)
 
 
@@ -76,7 +77,7 @@ def get_cached_crime_data(lat: float, lon: float, radius_miles: float) -> Option
 
     if os.path.exists(cache_file):
         try:
-            with open(cache_file, 'r') as f:
+            with gzip.open(cache_file, 'rt') as f:
                 data = json.load(f)
                 if not is_expired(data['cache_info']['expires']):
                     return data['crime_data']
@@ -104,7 +105,7 @@ def save_cached_crime_data(lat: float, lon: float, radius_miles: float,
         'crime_data': crime_data,
     }
 
-    with open(cache_file, 'w') as f:
+    with gzip.open(cache_file, 'wt') as f:
         json.dump(cache_data, f, indent=2)
 
 
@@ -112,7 +113,7 @@ def get_crime_cache_file_path(cache_key: str) -> str:
     """Generate file path for cached crime statistics."""
     cache_dir = os.path.join('data', 'crime_cache')
     stable_hash = hashlib.md5(cache_key.encode()).hexdigest()
-    return os.path.join(cache_dir, f"{stable_hash}.json")
+    return os.path.join(cache_dir, f"{stable_hash}.json.gz")
 
 
 def get_geocoding_cache_file_path(cache_key: str) -> str:
@@ -128,7 +129,7 @@ def get_geocoding_cache_file_path(cache_key: str) -> str:
     cache_dir = os.path.join("data", "geocoding_cache")
     # Use stable hash function
     stable_hash = hashlib.md5(cache_key.encode()).hexdigest()
-    cache_file = os.path.join(cache_dir, f"{stable_hash}.json")
+    cache_file = os.path.join(cache_dir, f"{stable_hash}.json.gz")
     return cache_file
 
 
@@ -153,7 +154,7 @@ def get_cached_route(origin_lat: float, origin_lon: float, destination_address: 
     
     if os.path.exists(cache_file):
         try:
-            with open(cache_file, 'r') as f:
+            with gzip.open(cache_file, 'rt') as f:
                 data = json.load(f)
                 if not is_expired(data['cache_info']['expires']):
                     return data['route_data']
@@ -202,7 +203,7 @@ def save_cached_route(origin_lat: float, origin_lon: float, destination_address:
     }
     
     # Save to file
-    with open(cache_file, 'w') as f:
+    with gzip.open(cache_file, 'wt') as f:
         json.dump(cache_data, f, indent=2)
 
 
@@ -215,7 +216,7 @@ def get_cached_osrm_route(origin_lat: float, origin_lon: float,
 
     if os.path.exists(cache_file):
         try:
-            with open(cache_file, "r") as f:
+            with gzip.open(cache_file, "rt") as f:
                 data = json.load(f)
                 if not is_expired(data["cache_info"]["expires"]):
                     return data["route_data"]
@@ -242,7 +243,7 @@ def save_cached_osrm_route(origin_lat: float, origin_lon: float,
         },
         "route_data": route_data,
     }
-    with open(cache_file, "w") as f:
+    with gzip.open(cache_file, "wt") as f:
         json.dump(cache_data, f, indent=2)
 
 
@@ -254,8 +255,8 @@ def get_cache_file_path(lat: float, lon: float, cache_key: str) -> str:
     data/grid_cache/
     ├── 40.71/                    # lat truncated to 2 decimals
     │   ├── -74.00/              # lon truncated to 2 decimals
-    │   │   ├── route_cache_1.json
-    │   │   └── route_cache_2.json
+    │   │   ├── route_cache_1.json.gz
+    │   │   └── route_cache_2.json.gz
     
     Args:
         lat: Latitude
@@ -271,7 +272,7 @@ def get_cache_file_path(lat: float, lon: float, cache_key: str) -> str:
     cache_dir = os.path.join("data", "grid_cache", lat_dir, lon_dir)
     # Use stable hash function
     stable_hash = hashlib.md5(cache_key.encode()).hexdigest()
-    cache_file = os.path.join(cache_dir, f"{stable_hash}.json")
+    cache_file = os.path.join(cache_dir, f"{stable_hash}.json.gz")
     
     return cache_file
 
@@ -309,10 +310,10 @@ def clear_expired_cache() -> int:
     
     for root, dirs, files in os.walk(cache_root):
         for file in files:
-            if file.endswith('.json'):
+            if file.endswith('.json.gz'):
                 file_path = os.path.join(root, file)
                 try:
-                    with open(file_path, 'r') as f:
+                    with gzip.open(file_path, 'rt') as f:
                         data = json.load(f)
                         if is_expired(data['cache_info']['expires']):
                             os.remove(file_path)
@@ -351,13 +352,13 @@ def get_cache_stats() -> Dict[str, Any]:
     
     for root, dirs, files in os.walk(cache_root):
         for file in files:
-            if file.endswith('.json'):
+            if file.endswith('.json.gz'):
                 file_path = os.path.join(root, file)
                 try:
                     total_files += 1
                     total_size += os.path.getsize(file_path)
-                    
-                    with open(file_path, 'r') as f:
+
+                    with gzip.open(file_path, 'rt') as f:
                         data = json.load(f)
                         if is_expired(data['cache_info']['expires']):
                             expired_files += 1

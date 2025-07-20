@@ -7,6 +7,7 @@ import time
 import json
 import os
 import logging
+import threading
 import requests
 from typing import Callable, Any, Optional
 from datetime import datetime, timedelta
@@ -35,20 +36,22 @@ class RateLimiter:
             requests_per_second: Maximum requests per second allowed
         """
         self.requests_per_second = requests_per_second
-        self.last_request_time = 0
+        self.last_request_time = 0.0
+        # Support multithreaded access
+        self._lock = threading.Lock()
         
     def wait_if_needed(self) -> None:
         """
         Wait if necessary to maintain rate limit.
         """
-        time_since_last = time.time() - self.last_request_time
-        min_interval = 1.0 / self.requests_per_second
-        
-        if time_since_last < min_interval:
-            sleep_time = min_interval - time_since_last
-            time.sleep(sleep_time)
-            
-        self.last_request_time = time.time()
+        with self._lock:
+            time_since_last = time.time() - self.last_request_time
+            min_interval = 1.0 / self.requests_per_second
+
+            if time_since_last < min_interval:
+                time.sleep(min_interval - time_since_last)
+
+            self.last_request_time = time.time()
 
 
 class APIHandler:
