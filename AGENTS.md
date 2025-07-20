@@ -16,7 +16,7 @@
 # Info
 - Install dependencies with `pip install -r requirements.txt` before running tests.
 - Run tests via `pytest -q`.
-- The project TODO list is in `spec/TODO.md`. Update it when tasks are completed. 
+- The project TODO list is in `README.md`. Update it when tasks are completed. 
 - In general tasks should be addressed by the process:
 
 # Process Loop
@@ -28,7 +28,7 @@
 - Implementing those subtasks. 
 - Writing unit tests for those subtasks. 
 - Marking the task and subtasks as done or in need of further refinement.
-- Updating any of the appropriate readmes in spec/ updating 
+- Updating README documentation as needed
 - Write down decisions containing context information for future LLM agent's work. 
 - Write context to # LLM Sandbox as desired
 
