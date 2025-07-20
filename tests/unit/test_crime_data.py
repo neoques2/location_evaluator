@@ -86,3 +86,11 @@ def test_analyzer_uses_crime_api(monkeypatch):
     assert len(results) == 1
     assert results[0].safety_analysis.crime_score == 0.2
     assert called['count'] == 1
+
+
+def test_calculate_safety_score_increases_with_crime():
+    low = crime_data.calculate_safety_score(1, 0, 0, 1000.0)
+    high = crime_data.calculate_safety_score(5, 3, 2, 1000.0)
+    assert 0 <= low <= 1
+    assert 0 <= high <= 1
+    assert high > low
