@@ -22,3 +22,21 @@ Prototype CLI tool for exploring residential desirability. It builds a grid of p
 - `spec/` – design documents
 
 Run `python main.py --dry-run` to validate configuration and see the planned analysis.
+
+## Installation
+
+1. Install Python 3.11 or later.
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+## Quick Start
+
+```bash
+# validate configuration
+python main.py --dry-run
+
+# run analysis with default config
+python main.py --cache-only --output outputs/example.html
+```
