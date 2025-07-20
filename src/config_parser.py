@@ -340,6 +340,10 @@ class ConfigParser:
             bs = osrm_cfg['batch_size']
             if not isinstance(bs, int) or bs <= 0:
                 raise ConfigValidationError("OSRM batch_size must be positive integer")
+        if 'parallel_workers' in osrm_cfg:
+            pw = osrm_cfg['parallel_workers']
+            if not isinstance(pw, int) or pw <= 0:
+                raise ConfigValidationError("parallel_workers must be positive integer")
 
         if 'fbi_crime' not in apis:
             raise ConfigValidationError("API config missing fbi_crime section")

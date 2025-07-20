@@ -7,6 +7,7 @@ apis:
     requests_per_second: 10
     cache: true
     batch_size: 50           # number of coordinate pairs per table request
+    parallel_workers: 4
 
   fbi_crime:
     base_url: "https://api.usa.gov/crime/fbi/cde/"

@@ -5,11 +5,13 @@ Orchestrates the complete analysis workflow from grid generation to output.
 
 import logging
 from typing import Dict, Any, List
+from concurrent.futures import ThreadPoolExecutor
 import pandas as pd
 from pathlib import Path
 
 from .apis.osrm import OSRMClient
 from tqdm import tqdm
+from .utils.memory import log_memory_usage
 
 from .core.grid_generator import AnalysisGrid
 from .core.scheduler import (
@@ -77,10 +79,12 @@ class LocationAnalyzer:
         # Phase 1: Setup and Grid Generation
         self.logger.info("Phase 1: Generating analysis grid")
         self._setup_analysis_grid()
+        log_memory_usage(self.logger, "after_grid")
         
         # Phase 2: Schedule Processing
         self.logger.info("Phase 2: Processing destination schedules")
         self._process_schedules()
+        log_memory_usage(self.logger, "after_schedules")
 
         # Validate required inputs
         self._validate_inputs()
@@ -88,10 +92,12 @@ class LocationAnalyzer:
         # Phase 3: Route Calculations (placeholder for now)
         self.logger.info("Phase 3: Calculating routes")
         route_data = self._calculate_routes()
+        log_memory_usage(self.logger, "after_routes")
         
         # Phase 4: Analysis and Scoring (placeholder for now)
         self.logger.info("Phase 4: Analyzing locations and calculating scores")
         analysis_results = self._analyze_locations(route_data)
+        log_memory_usage(self.logger, "after_analysis")
         
         # Phase 5: Regional Statistics
         self.logger.info("Phase 5: Computing regional statistics")
@@ -174,6 +180,7 @@ class LocationAnalyzer:
             force_refresh=self.force_refresh,
         )
         batch_size = osrm_cfg.get('batch_size', 50)
+        parallel_workers = osrm_cfg.get('parallel_workers', 1)
 
         grid_df = self.grid.get_grid_dataframe()
         use_cache = osrm_cfg.get('cache', True)
@@ -183,19 +190,19 @@ class LocationAnalyzer:
             'successful_calculations': 0,
             'failed_calculations': 0,
             'cache_hits': 0,
-            'routes': {}
+            'routes': {},
+            'interrupted': False,
         }
 
         origins: List[Dict[str, float]] = []
         destinations: List[Dict[str, float]] = []
         meta: List[tuple] = []
+        tasks: List[tuple] = []
+        executor = ThreadPoolExecutor(max_workers=parallel_workers) if parallel_workers > 1 else None
 
-        def flush_batch() -> None:
-            if not origins:
-                return
-            results = client.route_batch(origins, destinations)
+        def process_results(meta_list: List[tuple], results: List[Dict[str, Any]]) -> None:
             route_data['total_api_calls'] += 1
-            for (pid, dest_address, o_lat, o_lon, dep, day), res in zip(meta, results):
+            for (pid, dest_address, o_lat, o_lon, dep, day), res in zip(meta_list, results):
                 route_data['routes'].setdefault(pid, {})[dest_address] = res
                 if res['status'] == 'OK':
                     route_data['successful_calculations'] += 1
@@ -204,39 +211,61 @@ class LocationAnalyzer:
                 if use_cache:
                     save_cached_route(o_lat, o_lon, dest_address, dep, day, res,
                                      cache_duration_days=self.output_config.get('cache_duration', 7))
+
+        def flush_batch() -> None:
+            if not origins:
+                return
+            batch_meta = meta.copy()
+            batch_orig = origins.copy()
+            batch_dest = destinations.copy()
             origins.clear()
             destinations.clear()
             meta.clear()
+            if executor:
+                future = executor.submit(client.route_batch, batch_orig, batch_dest)
+                tasks.append((future, batch_meta))
+            else:
+                results = client.route_batch(batch_orig, batch_dest)
+                process_results(batch_meta, results)
 
-        for row in tqdm(grid_df.itertuples(), total=len(grid_df), desc="Routes"):
-            origin = {'lat': row.lat, 'lon': row.lon}
-            for sched in self.schedules:
-                dest_addr = sched['destination']
-                dep = sched.get('departure_time', '')
-                day = sched.get('day', sched.get('pattern', ''))
-                dest = {'lat': sched.get('lat', origin['lat']), 'lon': sched.get('lon', origin['lon'])}
+        try:
+            for row in tqdm(grid_df.itertuples(), total=len(grid_df), desc="Routes"):
+                origin = {'lat': row.lat, 'lon': row.lon}
+                for sched in self.schedules:
+                    dest_addr = sched['destination']
+                    dep = sched.get('departure_time', '')
+                    day = sched.get('day', sched.get('pattern', ''))
+                    dest = {'lat': sched.get('lat', origin['lat']), 'lon': sched.get('lon', origin['lon'])}
 
-                cached = None
-                if use_cache and not self.force_refresh:
-                    cached = get_cached_route(origin['lat'], origin['lon'], dest_addr, dep, day)
+                    cached = None
+                    if use_cache and not self.force_refresh:
+                        cached = get_cached_route(origin['lat'], origin['lon'], dest_addr, dep, day)
 
-                if cached:
-                    route_data['cache_hits'] += 1
-                    route_data['routes'].setdefault(row.point_id, {})[dest_addr] = cached
-                    continue
+                    if cached:
+                        route_data['cache_hits'] += 1
+                        route_data['routes'].setdefault(row.point_id, {})[dest_addr] = cached
+                        continue
 
-                if self.cache_only:
-                    route_data['failed_calculations'] += 1
-                    continue
+                    if self.cache_only:
+                        route_data['failed_calculations'] += 1
+                        continue
 
-                origins.append(origin)
-                destinations.append(dest)
-                meta.append((row.point_id, dest_addr, origin['lat'], origin['lon'], dep, day))
+                    origins.append(origin)
+                    destinations.append(dest)
+                    meta.append((row.point_id, dest_addr, origin['lat'], origin['lon'], dep, day))
 
-                if len(origins) >= batch_size:
-                    flush_batch()
+                    if len(origins) >= batch_size:
+                        flush_batch()
+        except KeyboardInterrupt:
+            route_data['interrupted'] = True
+            self.logger.warning("Route calculation interrupted. Finishing remaining batches...")
 
         flush_batch()
+        if executor:
+            for future, m in tqdm(tasks, desc="Route Batches"):
+                results = future.result()
+                process_results(m, results)
+            executor.shutdown(wait=False)
 
         return route_data
 
