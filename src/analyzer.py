@@ -8,6 +8,7 @@ from typing import Dict, Any, List
 from pathlib import Path
 
 from .apis.osrm import OSRMClient
+from tqdm import tqdm
 
 from .core.grid_generator import AnalysisGrid
 from .core.scheduler import (
@@ -203,7 +204,7 @@ class LocationAnalyzer:
             destinations.clear()
             meta.clear()
 
-        for row in grid_df.itertuples():
+        for row in tqdm(grid_df.itertuples(), total=len(grid_df), desc="Routes"):
             origin = {'lat': row.lat, 'lon': row.lon}
             for sched in self.schedules:
                 dest_addr = sched['destination']

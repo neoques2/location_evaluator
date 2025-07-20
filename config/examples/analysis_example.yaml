@@ -1,0 +1,9 @@
+# Example configuration
+
+# Analysis Configuration
+# Grid and region settings for location evaluation
+
+analysis:
+  grid_size: 0.5              # miles between grid points
+  max_radius: 25              # miles from center of region
+  center_point: [32.7767, -96.7970] # Dallas, TX center coordinates
