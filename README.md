@@ -27,6 +27,7 @@ Configuration is split into several YAML files:
 - **api.yaml** – OSRM server settings and rate limits
 - **weights.yaml** – scoring weights for time, cost and safety
 - **output.yaml** – cache duration and visualization options
+- **api_secrets.yaml** – API keys (ignored by git, create locally)
 
 See the files in the `config/` directory for examples.
 
@@ -184,7 +185,7 @@ The following packages need to be installed (see `requirements.txt`):
 ### User Documentation
 - [ ] Create comprehensive README.md
 - [ ] Add configuration examples
-- [ ] Document API key setup process
+- [x] Document API key setup process
 - [ ] Create troubleshooting guide
 
 ### Technical Documentation
@@ -196,7 +197,7 @@ The following packages need to be installed (see `requirements.txt`):
 ## Security and Privacy
 
 ### Security Tasks
-- [ ] Secure API key storage
+- [x] Secure API key storage
 - [ ] Validate all user inputs
 - [ ] Sanitize file paths
 - [ ] Add rate limiting protection
@@ -229,6 +230,7 @@ To get the Location Evaluator running:
 
 1. **Setup API Access**
    - [ ] Update `config/api.yaml`
+   - [ ] Create `config/api_secrets.yaml` with your FBI API key
 
 2. **Configure Analysis**
    - [ ] Set center_point in `config/analysis.yaml`
