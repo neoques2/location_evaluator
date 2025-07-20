@@ -9,6 +9,9 @@ from pathlib import Path
 from typing import Dict, Any, Union
 import logging
 
+from .apis.geocoding import geocode_address
+from .apis.network_utils import check_network_connectivity
+
 
 class ConfigValidationError(Exception):
     """Raised when configuration validation fails."""
@@ -133,6 +136,7 @@ class ConfigParser:
         self._validate_destinations_config(config.get('destinations', {}))
         self._validate_transportation_config(config.get('transportation', {}))
         self._validate_api_config(config.get('apis', {}))
+        self._check_api_connectivity(config.get('apis', {}))
         self._validate_weights_config(config.get('weights', {}))
         self._validate_output_config(config.get('output', {}))
     
@@ -194,7 +198,18 @@ class ConfigParser:
                 
                 # Validate schedule
                 self._validate_schedule(dest['schedule'], f"{category}[{i}]")
-                
+
+                # Validate geocoding for address unless network checks are disabled
+                if os.getenv('LE_SKIP_NETWORK') == '1':
+                    geo = {'lat': 0.0, 'lon': 0.0}
+                else:
+                    geo = geocode_address(dest['address'])
+                    if geo is None:
+                        raise ConfigValidationError(
+                            f"Could not geocode address '{dest['address']}' in category '{category}'")
+                dest['lat'] = geo['lat']
+                dest['lon'] = geo['lon']
+
                 total_destinations += 1
         
         if total_destinations == 0:
@@ -335,6 +350,18 @@ class ConfigParser:
 
         if 'timeout' in fbi_cfg and (not isinstance(fbi_cfg['timeout'], int) or fbi_cfg['timeout'] <= 0):
             raise ConfigValidationError("FBI crime timeout must be positive integer")
+
+    def _check_api_connectivity(self, apis: Dict[str, Any]) -> None:
+        """Check that API endpoints are reachable."""
+        if os.getenv('LE_SKIP_NETWORK') == '1':
+            return
+        osrm_url = apis.get('osrm', {}).get('base_url')
+        if osrm_url and not check_network_connectivity(osrm_url):
+            raise ConfigValidationError(f"Cannot reach OSRM server at {osrm_url}")
+
+        fbi_url = apis.get('fbi_crime', {}).get('base_url')
+        if fbi_url and not check_network_connectivity(fbi_url):
+            raise ConfigValidationError(f"Cannot reach FBI API at {fbi_url}")
     
     def _validate_weights_config(self, weights: Dict[str, Any]) -> None:
         """Validate weights configuration."""
