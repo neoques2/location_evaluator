@@ -110,6 +110,8 @@ python main.py --cache-only --output outputs/example.html
 - [x] Create summary statistics tables
 - [x] Add top locations ranking
 - [x] Generate HTML dashboard output
+- [x] Save Plotly figures individually before combining
+- [x] Remove Mapbox dependency; use open-street-map tiles
 
 ### Phase 5: Testing & Polish
 - [x] Add comprehensive unit tests

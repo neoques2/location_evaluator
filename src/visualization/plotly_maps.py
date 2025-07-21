@@ -135,8 +135,9 @@ def create_destinations_layer(destinations: List[Dict[str, Any]]) -> go.Scatterm
 
 
 def create_main_map(analysis_results: Dict[str, Any]) -> go.Figure:
-    """
-    Create main interactive map with all layers.
+    """Create main interactive map with all layers using open-street-map tiles.
+
+    The map renders offline and does not require any Mapbox access tokens.
 
     Args:
         analysis_results: Complete analysis results
@@ -145,7 +146,7 @@ def create_main_map(analysis_results: Dict[str, Any]) -> go.Figure:
         Plotly Figure with interactive map
     """
     grid_points = analysis_results["grid_points"]
-    destinations = []  # TODO: Extract destinations from analysis_results
+    destinations = analysis_results.get("destinations", [])
 
     # Get map center
     center_lat = analysis_results["analysis_metadata"]["center_point"]["lat"]
@@ -159,15 +160,14 @@ def create_main_map(analysis_results: Dict[str, Any]) -> go.Figure:
     fig.add_trace(create_composite_score_layer(grid_points))
     fig.add_trace(create_destinations_layer(destinations))
 
+    mapbox_cfg = dict(
+        style="open-street-map", center=dict(lat=center_lat, lon=center_lon), zoom=10
+    )
+
     # Configure layout with layer toggles
     fig.update_layout(
         title="Location Desirability Analysis",
-        mapbox=dict(
-            accesstoken="your_mapbox_token",  # TODO: Get from config
-            style="light",
-            center=dict(lat=center_lat, lon=center_lon),
-            zoom=10,
-        ),
+        mapbox=mapbox_cfg,
         updatemenus=[
             dict(
                 type="buttons",
