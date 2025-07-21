@@ -22,6 +22,7 @@ def create_travel_time_layer(grid_points: List[Dict[str, Any]]) -> go.Densitymap
         lat=[point["location"]["lat"] for point in grid_points],
         lon=[point["location"]["lon"] for point in grid_points],
         z=[point["travel_analysis"]["total_weekly_minutes"] for point in grid_points],
+        opacity=0.6,
         colorscale="Viridis",
         colorbar=dict(title="Weekly Travel Time (minutes)"),
         hovertemplate="<b>%{text}</b><br>"
@@ -54,6 +55,7 @@ def create_transportation_cost_layer(
             + point["cost_analysis"]["monthly_totals"]["transit_cost"]
             for point in grid_points
         ],
+        opacity=0.6,
         colorscale="Reds",
         colorbar=dict(title="Monthly Transportation Cost ($)"),
         hovertemplate="<b>%{text}</b><br>"
@@ -88,6 +90,7 @@ def create_composite_score_layer(grid_points: List[Dict[str, Any]]) -> go.Densit
         lat=[point["location"]["lat"] for point in grid_points],
         lon=[point["location"]["lon"] for point in grid_points],
         z=[point["composite_score"]["overall"] for point in grid_points],
+        opacity=0.6,
         colorscale="Plasma",
         colorbar=dict(title="Overall Desirability Score"),
         hovertemplate="<b>%{text}</b><br>"
