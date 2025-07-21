@@ -17,6 +17,7 @@ If FBI API is unavailable:
 import os
 import requests
 import json
+import math
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 from .cache import get_cached_crime_data, save_cached_crime_data
@@ -62,8 +63,6 @@ def get_crime_data(
     if use_cache and not force_refresh:
         cached = get_cached_crime_data(lat, lon, radius_miles)
         if cached is not None:
-            if cached.get('crime_data') is not None and cached.get('crime_data').get('crime_score') != 0.0:
-                print(cached.get('crime_data'))
             return cached
 
     # Convert to bounding box
@@ -126,7 +125,11 @@ def get_bounding_box(lat: float, lon: float, radius_miles: float) -> Dict[str, f
     # Longitude varies by latitude: 1 degree longitude ≈ 69 * cos(latitude) miles
     
     lat_offset = radius_miles / 69.0
-    lon_offset = radius_miles / (69.0 * abs(lat))
+    cos_lat = math.cos(math.radians(lat))
+    if cos_lat == 0:
+        lon_offset = 0
+    else:
+        lon_offset = radius_miles / (69.0 * cos_lat)
     
     return {
         'north': lat + lat_offset,
