@@ -3,8 +3,8 @@ Dashboard Generation
 Combines multiple visualizations into a comprehensive dashboard.
 """
 
+import os
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from typing import Dict, Any
 from .plotly_maps import create_main_map
 from .statistics import create_summary_stats, create_top_locations_table
@@ -13,53 +13,47 @@ from .statistics import create_summary_stats, create_top_locations_table
 def generate_interactive_map(
     analysis_results: Dict[str, Any], output_path: str
 ) -> None:
-    """
-    Generate final HTML output with all visualizations.
+    """Generate an interactive dashboard and save component figures.
+
+    This function saves the individual Plotly figures first and then creates a
+    small HTML page that embeds them via iframes. This helps troubleshoot issues
+    where the combined figure may appear blank.
 
     Args:
         analysis_results: Complete analysis results
-        output_path: Path to save HTML output
+        output_path: Path to save final HTML dashboard
     """
-    # Create main map
+    base_dir = os.path.dirname(output_path) or "."
+    base_name = os.path.splitext(os.path.basename(output_path))[0]
+
+    main_file = os.path.join(base_dir, f"{base_name}_map.html")
+    stats_file = os.path.join(base_dir, f"{base_name}_stats.html")
+    locations_file = os.path.join(base_dir, f"{base_name}_locations.html")
+
     main_fig = create_main_map(analysis_results)
-
-    # Create summary statistics
     stats_fig = create_summary_stats(analysis_results)
-
-    # Create top locations table
     locations_fig = create_top_locations_table(analysis_results)
 
-    # Combine into dashboard
-    dashboard = make_subplots(
-        rows=2,
-        cols=2,
-        specs=[
-            [{"type": "mapbox", "colspan": 2}, None],
-            [{"type": "table"}, {"type": "table"}],
-        ],
-        subplot_titles=("Location Analysis", "Regional Statistics", "Top Locations"),
-    )
+    main_fig.write_html(main_file)
+    stats_fig.write_html(stats_file)
+    locations_fig.write_html(locations_file)
 
-    # Add traces to dashboard
-    for trace in main_fig.data:
-        dashboard.add_trace(trace, row=1, col=1)
+    html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <title>Location Desirability Analysis Dashboard</title>
+</head>
+<body>
+    <iframe src="{os.path.basename(main_file)}" width="100%" height="600" frameborder="0"></iframe>
+    <div style="display:flex; gap:1%; margin-top:20px;">
+        <iframe src="{os.path.basename(stats_file)}" width="49%" height="400" frameborder="0"></iframe>
+        <iframe src="{os.path.basename(locations_file)}" width="49%" height="400" frameborder="0"></iframe>
+    </div>
+</body>
+</html>"""
 
-    dashboard.add_trace(stats_fig.data[0], row=2, col=1)
-    dashboard.add_trace(locations_fig.data[0], row=2, col=2)
-
-    # Update layout
-    dashboard.update_layout(
-        title="Location Desirability Analysis Dashboard", height=1200, showlegend=False
-    )
-
-    # Copy mapbox configuration from main map
-    dashboard.update_layout(mapbox=main_fig.layout.mapbox)
-
-    # Copy update menus (layer toggles) from main map
-    dashboard.update_layout(updatemenus=main_fig.layout.updatemenus)
-
-    # Save to HTML
-    dashboard.write_html(output_path)
+    with open(output_path, "w") as f:
+        f.write(html)
 
     print(f"Interactive map saved to: {output_path}")
 

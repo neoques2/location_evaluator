@@ -54,3 +54,6 @@ def test_main_map_layers():
     ]
     assert layer_names == expected
     assert len(fig.data) == 4
+    # when no token is provided the map should use open street map tiles
+    assert fig.layout.mapbox.style == "open-street-map"
+    assert fig.layout.mapbox.accesstoken is None
