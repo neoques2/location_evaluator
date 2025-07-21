@@ -135,7 +135,7 @@ def test_get_bounding_box_produces_reasonable_offsets():
     assert bbox['east'] - bbox['west'] > 0
     assert bbox['north'] - bbox['south'] > 0
 
-
+    
 def test_get_crime_data_large_bbox(monkeypatch):
     lat, lon = 32.7767, -96.7970
     radius_miles = 34.5  # roughly 0.5 degrees latitude
