@@ -124,3 +124,34 @@ def test_calculate_safety_score_uses_weights():
         weights={'violent': 4.0, 'property': 2.0, 'other': 1.0},
     )
     assert weighted > default
+
+
+def test_get_bounding_box_produces_reasonable_offsets():
+    bbox = crime_data.get_bounding_box(40.0, -75.0, 1.0)
+    assert bbox['north'] > 40.0
+    assert bbox['south'] < 40.0
+    assert bbox['east'] > -75.0
+    assert bbox['west'] < -75.0
+    assert bbox['east'] - bbox['west'] > 0
+    assert bbox['north'] - bbox['south'] > 0
+
+
+def test_get_crime_data_large_bbox(monkeypatch):
+    lat, lon = 32.7767, -96.7970
+    radius_miles = 34.5  # roughly 0.5 degrees latitude
+    captured = {}
+
+    def fake_get(url, params=None, timeout=10):
+        captured['params'] = params
+        return DummyResp({'incidents': [{'crime_type': 'violent'}]})
+
+    monkeypatch.setattr(crime_data.requests, 'get', fake_get)
+
+    result = crime_data.get_crime_data(lat, lon, radius_miles=radius_miles, use_cache=False)
+
+    bbox = crime_data.get_bounding_box(lat, lon, radius_miles)
+    expected = f"{bbox['west']},{bbox['south']},{bbox['east']},{bbox['north']}"
+    assert captured['params']['bbox'] == expected
+    assert bbox['east'] - bbox['west'] > 1.0
+    assert bbox['north'] - bbox['south'] == 1.0
+    assert result['incident_count'] == 1
