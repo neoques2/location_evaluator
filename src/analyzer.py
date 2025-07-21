@@ -621,7 +621,6 @@ class LocationAnalyzer:
         generate_interactive_map(asdict(results), html_path)
         self.logger.info(f"HTML output generated: {html_path}")
 
-
     def _generate_json_output(self, results: AnalysisResults, output_path: str) -> None:
         """Generate JSON data export."""
         from dataclasses import asdict
