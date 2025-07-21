@@ -124,3 +124,13 @@ def test_calculate_safety_score_uses_weights():
         weights={'violent': 4.0, 'property': 2.0, 'other': 1.0},
     )
     assert weighted > default
+
+
+def test_get_bounding_box_produces_reasonable_offsets():
+    bbox = crime_data.get_bounding_box(40.0, -75.0, 1.0)
+    assert bbox['north'] > 40.0
+    assert bbox['south'] < 40.0
+    assert bbox['east'] > -75.0
+    assert bbox['west'] < -75.0
+    assert bbox['east'] - bbox['west'] > 0
+    assert bbox['north'] - bbox['south'] > 0
