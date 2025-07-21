@@ -227,7 +227,7 @@ To get the Location Evaluator running:
 
 2. **Configure Analysis**
    - [ ] Set center_point in `config/analysis.yaml`
-   - [ ] Update destinations in `config/destinations.yaml`
+   - [x] Update destinations in `config/destinations.yaml`
 
 3. **Test Installation**
    - [ ] Run `python test_core_components.py`

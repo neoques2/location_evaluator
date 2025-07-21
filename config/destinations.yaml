@@ -16,6 +16,27 @@ destinations:
         - days: "Wed"
           arrival_time: "21:00"
           departure_time: "23:00"
+
+    - address: "8021 Walnut Hill Ln, Dallas, TX 75231"
+      name: "Movement Gym - The Hill"
+      schedule:
+        - days: "Tue"
+          arrival_time: "19:30"
+          departure_time: "21:00"
+
+    - address: "525 Talbert Dr, Plano, TX 75075"
+      name: "Movement Gym - Plano"
+      schedule:
+        - days: "Thu"
+          arrival_time: "19:30"
+          departure_time: "21:00"
+
+    - address: "1330 Conant St, Dallas, TX 75207"
+      name: "Movement Gym - Design District"
+      schedule:
+        - days: "Sun"
+          arrival_time: "13:30"
+          departure_time: "15:30"
           
 # Schedule Pattern Definitions:
 # Standard Patterns:
