@@ -74,63 +74,6 @@ def create_transportation_cost_layer(
     return cost_layer
 
 
-def create_safety_layer(grid_points: List[Dict[str, Any]]) -> go.Densitymapbox:
-    """
-    Create safety/crime heatmap layer.
-
-    Args:
-        grid_points: List of grid points with analysis data
-
-    Returns:
-        Plotly Densitymapbox trace for safety score
-    """
-    safety_layer = go.Densitymapbox(
-        lat=[point["location"]["lat"] for point in grid_points],
-        lon=[point["location"]["lon"] for point in grid_points],
-        z=[
-            1 - point["safety_analysis"]["crime_score"] for point in grid_points
-        ],  # Inverted - higher = safer
-        colorscale="RdYlGn",
-        colorbar=dict(title="Safety Score (higher = safer)"),
-        hovertemplate="<b>%{text}</b><br>"
-        + "Safety Grade: %{customdata[0]}<br>"
-        + "Crime Score: %{customdata[1]:.2f}<br>"
-        + "Nearby Incidents: %{customdata[2]}<br>"
-        + "<extra></extra>",
-        customdata=[
-            [
-                point["safety_analysis"]["safety_grade"],
-                point["safety_analysis"]["crime_score"],
-                point["safety_analysis"]["nearby_incidents"],
-            ]
-            for point in grid_points
-        ],
-        visible=False,
-        name="Safety",
-    )
-    return safety_layer
-
-
-def create_crime_type_layer(
-    grid_points: List[Dict[str, Any]], key: str, label: str
-) -> go.Densitymapbox:
-    """Create heatmap layer for a specific crime type."""
-    layer = go.Densitymapbox(
-        lat=[p["location"]["lat"] for p in grid_points],
-        lon=[p["location"]["lon"] for p in grid_points],
-        z=[p["safety_analysis"][f"{key}_crimes"] for p in grid_points],
-        colorscale="Reds",
-        colorbar=dict(title=f"{label} Incidents"),
-        hovertemplate="<b>%{text}</b><br>"
-        + f"{label}: %{{z}}<br>"
-        + "Location: %{lat}, %{lon}<br>"
-        + "<extra></extra>",
-        visible=False,
-        name=label,
-    )
-    return layer
-
-
 def create_composite_score_layer(grid_points: List[Dict[str, Any]]) -> go.Densitymapbox:
     """
     Create composite score heatmap layer.
@@ -153,7 +96,6 @@ def create_composite_score_layer(grid_points: List[Dict[str, Any]]) -> go.Densit
         + "Percentile: %{customdata[1]}<br>"
         + "Travel: %{customdata[2]:.2f}<br>"
         + "Cost: %{customdata[3]:.2f}<br>"
-        + "Safety: %{customdata[4]:.2f}<br>"
         + "<extra></extra>",
         customdata=[
             [
@@ -161,7 +103,6 @@ def create_composite_score_layer(grid_points: List[Dict[str, Any]]) -> go.Densit
                 point["composite_score"]["rank_percentile"],
                 point["composite_score"]["components"]["travel_time"],
                 point["composite_score"]["components"]["travel_cost"],
-                point["composite_score"]["components"]["safety"],
             ]
             for point in grid_points
         ],
@@ -215,10 +156,6 @@ def create_main_map(analysis_results: Dict[str, Any]) -> go.Figure:
     # Add all layers
     fig.add_trace(create_travel_time_layer(grid_points))
     fig.add_trace(create_transportation_cost_layer(grid_points))
-    fig.add_trace(create_safety_layer(grid_points))
-    fig.add_trace(create_crime_type_layer(grid_points, "violent", "Violent Crime"))
-    fig.add_trace(create_crime_type_layer(grid_points, "property", "Property Crime"))
-    fig.add_trace(create_crime_type_layer(grid_points, "other", "Other Crime"))
     fig.add_trace(create_composite_score_layer(grid_points))
     fig.add_trace(create_destinations_layer(destinations))
 
@@ -238,128 +175,17 @@ def create_main_map(analysis_results: Dict[str, Any]) -> go.Figure:
                 buttons=list(
                     [
                         dict(
-                            args=[
-                                {
-                                    "visible": [
-                                        True,
-                                        False,
-                                        False,
-                                        False,
-                                        False,
-                                        False,
-                                        False,
-                                        True,
-                                    ]
-                                }
-                            ],
+                            args=[{"visible": [True, False, False, True]}],
                             label="Travel Time",
                             method="restyle",
                         ),
                         dict(
-                            args=[
-                                {
-                                    "visible": [
-                                        False,
-                                        True,
-                                        False,
-                                        False,
-                                        False,
-                                        False,
-                                        False,
-                                        True,
-                                    ]
-                                }
-                            ],
+                            args=[{"visible": [False, True, False, True]}],
                             label="Transportation Cost",
                             method="restyle",
                         ),
                         dict(
-                            args=[
-                                {
-                                    "visible": [
-                                        False,
-                                        False,
-                                        True,
-                                        False,
-                                        False,
-                                        False,
-                                        False,
-                                        True,
-                                    ]
-                                }
-                            ],
-                            label="Safety",
-                            method="restyle",
-                        ),
-                        dict(
-                            args=[
-                                {
-                                    "visible": [
-                                        False,
-                                        False,
-                                        False,
-                                        True,
-                                        False,
-                                        False,
-                                        False,
-                                        True,
-                                    ]
-                                }
-                            ],
-                            label="Violent Crime",
-                            method="restyle",
-                        ),
-                        dict(
-                            args=[
-                                {
-                                    "visible": [
-                                        False,
-                                        False,
-                                        False,
-                                        False,
-                                        True,
-                                        False,
-                                        False,
-                                        True,
-                                    ]
-                                }
-                            ],
-                            label="Property Crime",
-                            method="restyle",
-                        ),
-                        dict(
-                            args=[
-                                {
-                                    "visible": [
-                                        False,
-                                        False,
-                                        False,
-                                        False,
-                                        False,
-                                        True,
-                                        False,
-                                        True,
-                                    ]
-                                }
-                            ],
-                            label="Other Crime",
-                            method="restyle",
-                        ),
-                        dict(
-                            args=[
-                                {
-                                    "visible": [
-                                        False,
-                                        False,
-                                        False,
-                                        False,
-                                        False,
-                                        False,
-                                        True,
-                                        True,
-                                    ]
-                                }
-                            ],
+                            args=[{"visible": [False, False, True, True]}],
                             label="Composite Score",
                             method="restyle",
                         ),

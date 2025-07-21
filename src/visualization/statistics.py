@@ -29,21 +29,18 @@ def create_summary_stats(analysis_results: Dict[str, Any]) -> go.Figure:
                 ),
                 cells=dict(
                     values=[
-                        ["Travel Time (min)", "Monthly Cost ($)", "Safety Score"],
+                        ["Travel Time (min)", "Monthly Cost ($)"],
                         [
                             stats["travel_time"]["min"],
-                            f"${stats['cost']}",
-                            f"{stats['safety']['min']}",
+                            stats["cost"]["min"],
                         ],
                         [
                             stats["travel_time"]["max"],
-                            f"${stats['cost']}",
-                            f"{stats['safety']['max']}",
+                            stats["cost"]["max"],
                         ],
                         [
                             stats["travel_time"]["avg"],
-                            f"${stats['cost']}",
-                            f"{stats['safety']['avg']}",
+                            stats["cost"]["avg"],
                         ],
                     ],
                     fill_color="white",
@@ -109,9 +106,6 @@ def calculate_regional_statistics(grid_points: List[Dict[str, Any]]) -> Dict[str
         + point["cost_analysis"]["monthly_totals"]["transit_cost"]
         for point in grid_points
     ]
-    safety_scores = [
-        1 - point["safety_analysis"]["crime_score"] for point in grid_points
-    ]  # Inverted
     composite_scores = [point["composite_score"]["overall"] for point in grid_points]
 
     # Sort locations by composite score for best locations list
@@ -133,7 +127,6 @@ def calculate_regional_statistics(grid_points: List[Dict[str, Any]]) -> Dict[str
                     point["cost_analysis"]["monthly_totals"]["driving_miles"] * 0.65
                     + point["cost_analysis"]["monthly_totals"]["transit_cost"]
                 ),
-                "safety_grade": point["safety_analysis"]["safety_grade"],
             }
         )
 
@@ -149,12 +142,6 @@ def calculate_regional_statistics(grid_points: List[Dict[str, Any]]) -> Dict[str
             "max": max(monthly_costs),
             "avg": sum(monthly_costs) / len(monthly_costs),
             "median": sorted(monthly_costs)[len(monthly_costs) // 2],
-        },
-        "safety": {
-            "min": min(safety_scores),
-            "max": max(safety_scores),
-            "avg": sum(safety_scores) / len(safety_scores),
-            "median": sorted(safety_scores)[len(safety_scores) // 2],
         },
         "composite": {
             "min": min(composite_scores),

@@ -1,12 +1,11 @@
 # Location Evaluator
 
-Location Evaluator is a prototype CLI for exploring residential desirability. It generates a grid of points around a center location, expands destination schedules and calculates routes using a local OSRM server. Crime scoring and cost analysis are included in a simplified form. Output can be an interactive HTML dashboard or raw JSON.
+Location Evaluator is a prototype CLI for exploring residential desirability. It generates a grid of points around a center location, expands destination schedules and calculates routes using a local OSRM server. Output can be an interactive HTML dashboard or raw JSON.
 
 ## Features
 - Modular YAML configuration files
 - Grid generation and schedule processing
 - OSRM routing client with request batching and caching
-- Placeholder FBI crime data integration
 - HTML and JSON output modes
 - Dry‑run and cache-only options for testing
 
@@ -25,9 +24,8 @@ Configuration is split into several YAML files:
 - **destinations.yaml** – addresses with weekly or monthly schedules
 - **transportation.yaml** – travel mode preferences
 - **api.yaml** – OSRM server settings and rate limits
-- **weights.yaml** – scoring weights for time, cost and safety
+- **weights.yaml** – scoring weights for time and cost
 - **output.yaml** – cache duration and visualization options
-- **api_secrets.yaml** – API keys (ignored by git, create locally)
 
 See the files in the `config/` directory for examples.
 
@@ -36,19 +34,18 @@ See the files in the `config/` directory for examples.
 2. Build an analysis grid around the center location
 3. Expand schedules into individual trips
 4. Batch route requests to OSRM (using cache when available)
-5. Calculate safety and cost metrics
+5. Calculate transportation cost metrics
 6. Produce an HTML dashboard or JSON export
 
 ## Data Model Summary
-Analysis results include location info, travel time and distance, cost, safety statistics and a composite score for each grid point. Data classes for these structures live in `src/models/data_structures.py`.
+Analysis results include location info, travel time and distance, cost and a composite score for each grid point. Data classes for these structures live in `src/models/data_structures.py`.
 
 ## Visualization Notes
-`src/visualization` contains helpers for Plotly maps and simple dashboards. Layers for travel time, cost, safety, individual crime types and composite score can be toggled. Destinations are always visible for context.
+`src/visualization` contains helpers for Plotly maps and simple dashboards. Layers for travel time, cost and composite score can be toggled. Destinations are always visible for context.
 
 ## Roadmap
 ### Completed
 - Core infrastructure (CLI, config parser, grid generator, schedule processor)
-- API integration with OSRM and basic crime data
 - Caching for geocoding and OSRM route requests
 - Basic Plotly visualization
 
@@ -100,14 +97,10 @@ python main.py --cache-only --output outputs/example.html
 - [x] Implement OSRM routing client
 - [x] Add rate limiting and error handling
 - [x] Implement local caching system
-- [x] Add FBI crime data integration
-- [x] Implement crime data caching
 
 ### Phase 3: Analysis Engine
 - [x] Implement travel time calculations
 - [x] Add transportation cost analysis
-- [x] Implement safety scoring algorithm
-- [x] Calibrate safety scoring parameters
 - [x] Create composite scoring system
 - [x] Add data validation and error handling
 
@@ -117,7 +110,6 @@ python main.py --cache-only --output outputs/example.html
 - [x] Create summary statistics tables
 - [x] Add top locations ranking
 - [x] Generate HTML dashboard output
-- [x] Add crime type heatmap layers
 
 ### Phase 5: Testing & Polish
 - [x] Add comprehensive unit tests
@@ -230,7 +222,6 @@ To get the Location Evaluator running:
 
 1. **Setup API Access**
    - [ ] Update `config/api.yaml`
-   - [ ] Create `config/api_secrets.yaml` with your FBI API key
 
 2. **Configure Analysis**
    - [ ] Set center_point in `config/analysis.yaml`

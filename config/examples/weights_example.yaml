@@ -4,14 +4,5 @@
 # Weights for composite scoring (must sum to 1.0)
 
 weights:
-  travel_time: 0.4    # Weight for travel time component
-  travel_cost: 0.3    # Weight for transportation cost component
-  safety: 0.3         # Weight for safety/crime component
-
-# Safety scoring parameters
-safety_parameters:
-  violent_weight: 2.0    # weight for violent crimes
-  property_weight: 1.0   # weight for property crimes
-  other_weight: 0.5      # weight for other crimes
-  density_scale: 1000.0  # population density normalizer
-  score_scale: 10.0      # divisor for 0-1 score range
+  travel_time: 0.5    # Weight for travel time component
+  travel_cost: 0.5    # Weight for transportation cost component

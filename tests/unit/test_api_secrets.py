@@ -26,7 +26,7 @@ def _create_minimal_config(path):
         "apis:\n  osrm:\n    base_url: http://localhost:5000\n    timeout: 30\n    requests_per_second: 10\n    cache: false\n    batch_size: 5\n  fbi_crime:\n    base_url: https://example.com/\n    timeout: 30\n"
     )
     (path / "weights.yaml").write_text(
-        "weights:\n  travel_time: 0.5\n  travel_cost: 0.3\n  safety: 0.2\n"
+        "weights:\n  travel_time: 0.5\n  travel_cost: 0.5\n"
     )
     (path / "output.yaml").write_text(
         "output:\n  output_format: json\n  cache_duration: 7\n"

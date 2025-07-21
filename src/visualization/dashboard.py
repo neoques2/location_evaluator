@@ -109,7 +109,6 @@ def create_data_export(analysis_results: Dict[str, Any], output_path: str) -> No
                     point["cost_analysis"]["monthly_totals"]["driving_miles"] * 0.65
                     + point["cost_analysis"]["monthly_totals"]["transit_cost"]
                 ),
-                "safety_grade": point["safety_analysis"]["safety_grade"],
             }
             for point in analysis_results["grid_points"]
         ],
