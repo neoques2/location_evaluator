@@ -57,3 +57,6 @@ def test_main_map_layers():
     # when no token is provided the map should use open street map tiles
     assert fig.layout.mapbox.style == "open-street-map"
     assert fig.layout.mapbox.accesstoken is None
+    # density layers should be partially transparent
+    for trace in fig.data[:3]:
+        assert trace.opacity == 0.6
