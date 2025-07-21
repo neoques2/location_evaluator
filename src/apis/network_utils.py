@@ -14,4 +14,3 @@ def check_network_connectivity(url: str, timeout: int = 5) -> bool:
     except Exception as e:
         logger.warning(f"Network connectivity check failed for {url}: {e}")
         return False
-

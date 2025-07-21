@@ -9,8 +9,14 @@ from geopy.exc import GeocoderServiceError
 from .cache import get_cached_geocoding, save_cached_geocoding
 
 
-def geocode_address(address: str, *, timeout: int = 10, use_cache: bool = True,
-                    cache_duration_days: int = 30, force_refresh: bool = False) -> Optional[Dict[str, Any]]:
+def geocode_address(
+    address: str,
+    *,
+    timeout: int = 10,
+    use_cache: bool = True,
+    cache_duration_days: int = 30,
+    force_refresh: bool = False,
+) -> Optional[Dict[str, Any]]:
     """Geocode an address string to latitude/longitude.
 
     Args:
@@ -35,11 +41,12 @@ def geocode_address(address: str, *, timeout: int = 10, use_cache: bool = True,
         if loc:
             result = {"lat": loc.latitude, "lon": loc.longitude}
             if use_cache:
-                save_cached_geocoding(address, result, cache_duration_days=cache_duration_days)
+                save_cached_geocoding(
+                    address, result, cache_duration_days=cache_duration_days
+                )
             return result
     except GeocoderServiceError as e:
         logger.warning(f"Geocoding failed for '{address}': {e}")
     except Exception as e:
         logger.warning(f"Unexpected geocoding error for '{address}': {e}")
     return None
-

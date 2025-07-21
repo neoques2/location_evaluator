@@ -39,11 +39,16 @@ class LocationAnalyzer:
     """
     Main analysis engine that coordinates all components.
     """
-    
-    def __init__(self, config: Dict[str, Any], cache_only: bool = False, force_refresh: bool = False):
+
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        cache_only: bool = False,
+        force_refresh: bool = False,
+    ):
         """
         Initialize analyzer with configuration.
-        
+
         Args:
             config: Complete configuration dictionary
             cache_only: Use only cached data, don't make API calls
@@ -53,98 +58,102 @@ class LocationAnalyzer:
         self.cache_only = cache_only
         self.force_refresh = force_refresh
         self.logger = logging.getLogger(__name__)
-        
+
         # Extract key configuration sections
-        self.analysis_config = config['analysis']
-        self.destinations_config = config['destinations']
-        self.transportation_config = config['transportation']
-        self.weights_config = config['weights']
-        self.output_config = config['output']
-        
+        self.analysis_config = config["analysis"]
+        self.destinations_config = config["destinations"]
+        self.transportation_config = config["transportation"]
+        self.weights_config = config["weights"]
+        self.output_config = config["output"]
+
         # Initialize components
         self.grid = None
         self.schedules = None
-        
+
     def run_analysis(self) -> AnalysisResults:
         """
         Run complete location analysis.
-        
+
         Returns:
             Complete analysis results
         """
         self.logger.info("Starting location analysis")
-        
+
         # Phase 1: Setup and Grid Generation
         self.logger.info("Phase 1: Generating analysis grid")
         self._setup_analysis_grid()
-        
+
         # Phase 2: Schedule Processing
         self.logger.info("Phase 2: Processing destination schedules")
         self._process_schedules()
 
         # Validate required inputs
         self._validate_inputs()
-        
+
         # Phase 3: Route Calculations (placeholder for now)
         self.logger.info("Phase 3: Calculating routes")
         route_data = self._calculate_routes()
-        
+
         # Phase 4: Analysis and Scoring (placeholder for now)
         self.logger.info("Phase 4: Analyzing locations and calculating scores")
         analysis_results = self._analyze_locations(route_data)
-        
+
         # Phase 5: Regional Statistics
         self.logger.info("Phase 5: Computing regional statistics")
         regional_stats = self._compute_regional_statistics(analysis_results)
-        
+
         # Create final results
         results = AnalysisResults(
             analysis_metadata=self._create_metadata(),
             grid_points=analysis_results,
-            regional_statistics=regional_stats
+            regional_statistics=regional_stats,
         )
-        
-        self.logger.info(f"Analysis completed: {len(analysis_results)} grid points analyzed")
+
+        self.logger.info(
+            f"Analysis completed: {len(analysis_results)} grid points analyzed"
+        )
         return results
-    
+
     def _setup_analysis_grid(self) -> None:
         """Setup analysis grid based on configuration."""
-        center_point = self.analysis_config['center_point']
-        
+        center_point = self.analysis_config["center_point"]
+
         # Handle center point configuration
         if isinstance(center_point, str):
             # TODO: Geocode address string to coordinates
             # For now, use a default location (NYC)
             center_lat, center_lon = 40.7128, -74.0060
-            self.logger.warning(f"Geocoding not implemented, using default coordinates for '{center_point}'")
+            self.logger.warning(
+                f"Geocoding not implemented, using default coordinates for '{center_point}'"
+            )
         else:
             # Assume [lat, lon] coordinates
             center_lat, center_lon = center_point
-        
+
         # Create grid
         self.grid = AnalysisGrid(
             center_lat=center_lat,
             center_lon=center_lon,
-            radius_miles=self.analysis_config['max_radius'],
-            grid_size_miles=self.analysis_config['grid_size']
+            radius_miles=self.analysis_config["max_radius"],
+            grid_size_miles=self.analysis_config["grid_size"],
         )
-        
+
         grid_info = self.grid.get_grid_info()
         self.logger.info(f"Generated grid: {grid_info['total_points']:,} points")
         self.logger.debug(f"Grid details: {grid_info}")
-    
+
     def _process_schedules(self) -> None:
         """Process destination schedules into departure times."""
         self.schedules = process_schedules(self.config)
-        
+
         # Log schedule summary
         schedule_summary = {}
         for schedule in self.schedules:
-            category = schedule['category']
+            category = schedule["category"]
             if category not in schedule_summary:
                 schedule_summary[category] = 0
             schedule_summary[category] += 1
-        
+
         total_schedules = len(self.schedules)
         self.logger.info(f"Processed {total_schedules} schedule items")
         for category, count in schedule_summary.items():
@@ -156,7 +165,7 @@ class LocationAnalyzer:
             raise ValueError("Analysis grid is empty")
         if not self.schedules:
             raise ValueError("No schedules provided")
-    
+
     def _calculate_routes(self) -> Dict[str, Any]:
         """
         Calculate routes for all grid points using the OSRM service.
@@ -164,26 +173,26 @@ class LocationAnalyzer:
         Returns:
             Route calculation results
         """
-        osrm_cfg = self.config.get('apis', {}).get('osrm', {})
+        osrm_cfg = self.config.get("apis", {}).get("osrm", {})
         client = OSRMClient(
-            base_url=osrm_cfg.get('base_url', 'http://localhost:5000'),
-            timeout=osrm_cfg.get('timeout', 30),
-            requests_per_second=osrm_cfg.get('requests_per_second', 10),
-            use_cache=osrm_cfg.get('cache', True),
-            cache_duration_days=self.output_config.get('cache_duration', 7),
+            base_url=osrm_cfg.get("base_url", "http://localhost:5000"),
+            timeout=osrm_cfg.get("timeout", 30),
+            requests_per_second=osrm_cfg.get("requests_per_second", 10),
+            use_cache=osrm_cfg.get("cache", True),
+            cache_duration_days=self.output_config.get("cache_duration", 7),
             force_refresh=self.force_refresh,
         )
-        batch_size = osrm_cfg.get('batch_size', 50)
+        batch_size = osrm_cfg.get("batch_size", 50)
 
         grid_df = self.grid.get_grid_dataframe()
-        use_cache = osrm_cfg.get('cache', True)
+        use_cache = osrm_cfg.get("cache", True)
 
         route_data = {
-            'total_api_calls': 0,
-            'successful_calculations': 0,
-            'failed_calculations': 0,
-            'cache_hits': 0,
-            'routes': {}
+            "total_api_calls": 0,
+            "successful_calculations": 0,
+            "failed_calculations": 0,
+            "cache_hits": 0,
+            "routes": {},
         }
 
         origins: List[Dict[str, float]] = []
@@ -194,44 +203,60 @@ class LocationAnalyzer:
             if not origins:
                 return
             results = client.route_batch(origins, destinations)
-            route_data['total_api_calls'] += 1
+            route_data["total_api_calls"] += 1
             for (pid, dest_address, o_lat, o_lon, dep, day), res in zip(meta, results):
-                route_data['routes'].setdefault(pid, {})[dest_address] = res
-                if res['status'] == 'OK':
-                    route_data['successful_calculations'] += 1
+                route_data["routes"].setdefault(pid, {})[dest_address] = res
+                if res["status"] == "OK":
+                    route_data["successful_calculations"] += 1
                 else:
-                    route_data['failed_calculations'] += 1
+                    route_data["failed_calculations"] += 1
                 if use_cache:
-                    save_cached_route(o_lat, o_lon, dest_address, dep, day, res,
-                                     cache_duration_days=self.output_config.get('cache_duration', 7))
+                    save_cached_route(
+                        o_lat,
+                        o_lon,
+                        dest_address,
+                        dep,
+                        day,
+                        res,
+                        cache_duration_days=self.output_config.get("cache_duration", 7),
+                    )
             origins.clear()
             destinations.clear()
             meta.clear()
 
         for row in tqdm(grid_df.itertuples(), total=len(grid_df), desc="Routes"):
-            origin = {'lat': row.lat, 'lon': row.lon}
+            origin = {"lat": row.lat, "lon": row.lon}
             for sched in self.schedules:
-                dest_addr = sched['destination']
-                dep = sched.get('departure_time', '')
-                day = sched.get('day', sched.get('pattern', ''))
-                dest = {'lat': sched.get('lat', origin['lat']), 'lon': sched.get('lon', origin['lon'])}
+                dest_addr = sched["destination"]
+                dep = sched.get("departure_time", "")
+                day = sched.get("day", sched.get("pattern", ""))
+                dest = {
+                    "lat": sched.get("lat", origin["lat"]),
+                    "lon": sched.get("lon", origin["lon"]),
+                }
 
                 cached = None
                 if use_cache and not self.force_refresh:
-                    cached = get_cached_route(origin['lat'], origin['lon'], dest_addr, dep, day)
+                    cached = get_cached_route(
+                        origin["lat"], origin["lon"], dest_addr, dep, day
+                    )
 
                 if cached:
-                    route_data['cache_hits'] += 1
-                    route_data['routes'].setdefault(row.point_id, {})[dest_addr] = cached
+                    route_data["cache_hits"] += 1
+                    route_data["routes"].setdefault(row.point_id, {})[
+                        dest_addr
+                    ] = cached
                     continue
 
                 if self.cache_only:
-                    route_data['failed_calculations'] += 1
+                    route_data["failed_calculations"] += 1
                     continue
 
                 origins.append(origin)
                 destinations.append(dest)
-                meta.append((row.point_id, dest_addr, origin['lat'], origin['lon'], dep, day))
+                meta.append(
+                    (row.point_id, dest_addr, origin["lat"], origin["lon"], dep, day)
+                )
 
                 if len(origins) >= batch_size:
                     flush_batch()
@@ -243,10 +268,10 @@ class LocationAnalyzer:
     def _analyze_locations(self, route_data: Dict[str, Any]) -> List[Any]:
         """
         Analyze locations and calculate scores.
-        
+
         Args:
             route_data: Route calculation results
-            
+
         Returns:
             List of grid point analyses
         """
@@ -257,74 +282,99 @@ class LocationAnalyzer:
 
         grid_df = self.grid.get_grid_dataframe()
         schedules_df = pd.DataFrame(self.schedules or [])
-        safety_params = self.weights_config.get('safety_parameters', {})
+        safety_params = self.weights_config.get("safety_parameters", {})
 
         if schedules_df.empty:
             weekly_map = pd.Series(dtype=float)
             monthly_map = pd.Series(dtype=float)
             dest_meta = pd.DataFrame()
         else:
-            weekly_map = schedules_df.assign(
-                weight=schedules_df['frequency'].map({'weekly': 1.0, 'monthly': 12/52})
-            ).groupby('destination')['weight'].sum()
-            monthly_map = schedules_df.assign(
-                weight=schedules_df['frequency'].map({'weekly': 52/12, 'monthly': 1.0})
-            ).groupby('destination')['weight'].sum()
+            weekly_map = (
+                schedules_df.assign(
+                    weight=schedules_df["frequency"].map(
+                        {"weekly": 1.0, "monthly": 12 / 52}
+                    )
+                )
+                .groupby("destination")["weight"]
+                .sum()
+            )
+            monthly_map = (
+                schedules_df.assign(
+                    weight=schedules_df["frequency"].map(
+                        {"weekly": 52 / 12, "monthly": 1.0}
+                    )
+                )
+                .groupby("destination")["weight"]
+                .sum()
+            )
             dest_meta = (
                 schedules_df[
-                    ['destination', 'destination_name', 'category', 'departure_time']
+                    ["destination", "destination_name", "category", "departure_time"]
                 ]
-                .drop_duplicates(subset=['destination'])
-                .set_index('destination')
+                .drop_duplicates(subset=["destination"])
+                .set_index("destination")
             )
 
         route_records = []
-        for pid, dests in route_data.get('routes', {}).items():
+        for pid, dests in route_data.get("routes", {}).items():
             for dest, r in dests.items():
-                route_records.append({
-                    'point_id': pid,
-                    'destination': dest,
-                    'duration_min': r.get('duration_seconds', 0) / 60,
-                    'distance_miles': r.get('distance_miles', 0),
-                })
+                route_records.append(
+                    {
+                        "point_id": pid,
+                        "destination": dest,
+                        "duration_min": r.get("duration_seconds", 0) / 60,
+                        "distance_miles": r.get("distance_miles", 0),
+                    }
+                )
 
         routes_df = pd.DataFrame(route_records)
         if routes_df.empty:
             df = grid_df.copy()
-            df['weekly_minutes'] = 0.0
-            df['monthly_minutes'] = 0.0
-            df['drive_monthly_miles'] = 0.0
-            df['transit_monthly_cost'] = 0.0
+            df["weekly_minutes"] = 0.0
+            df["monthly_minutes"] = 0.0
+            df["drive_monthly_miles"] = 0.0
+            df["transit_monthly_cost"] = 0.0
         else:
-            freq_df = pd.DataFrame({
-                'destination': weekly_map.index,
-                'weekly_trips': weekly_map.values,
-                'monthly_trips': monthly_map.reindex(weekly_map.index).fillna(0).values,
-            })
+            freq_df = pd.DataFrame(
+                {
+                    "destination": weekly_map.index,
+                    "weekly_trips": weekly_map.values,
+                    "monthly_trips": monthly_map.reindex(weekly_map.index)
+                    .fillna(0)
+                    .values,
+                }
+            )
 
-            merged = routes_df.merge(freq_df, on='destination', how='left')
+            merged = routes_df.merge(freq_df, on="destination", how="left")
 
-            merged['weekly_minutes'] = merged['duration_min'] * merged['weekly_trips']
-            merged['monthly_minutes'] = merged['duration_min'] * merged['monthly_trips']
+            merged["weekly_minutes"] = merged["duration_min"] * merged["weekly_trips"]
+            merged["monthly_minutes"] = merged["duration_min"] * merged["monthly_trips"]
 
-            transit_fare = self.transportation_config.get('transit', {}).get('base_fare', 2.75)
-            merged['drive_monthly_miles'] = merged['distance_miles'] * merged['monthly_trips']
-            merged['transit_monthly_cost'] = merged['monthly_trips'] * transit_fare
+            transit_fare = self.transportation_config.get("transit", {}).get(
+                "base_fare", 2.75
+            )
+            merged["drive_monthly_miles"] = (
+                merged["distance_miles"] * merged["monthly_trips"]
+            )
+            merged["transit_monthly_cost"] = merged["monthly_trips"] * transit_fare
 
-            agg = merged.groupby('point_id').agg(
-                weekly_minutes=('weekly_minutes', 'sum'),
-                monthly_minutes=('monthly_minutes', 'sum'),
-                drive_monthly_miles=('drive_monthly_miles', 'sum'),
-                transit_monthly_cost=('transit_monthly_cost', 'sum'),
-            ).reset_index()
+            agg = (
+                merged.groupby("point_id")
+                .agg(
+                    weekly_minutes=("weekly_minutes", "sum"),
+                    monthly_minutes=("monthly_minutes", "sum"),
+                    drive_monthly_miles=("drive_monthly_miles", "sum"),
+                    transit_monthly_cost=("transit_monthly_cost", "sum"),
+                )
+                .reset_index()
+            )
 
-            df = grid_df.merge(agg, on='point_id', how='left').fillna(0)
-
+            df = grid_df.merge(agg, on="point_id", how="left").fillna(0)
 
         weights = {
-            'violent': safety_params.get('violent_weight', 2.0),
-            'property': safety_params.get('property_weight', 1.0),
-            'other': safety_params.get('other_weight', 0.5),
+            "violent": safety_params.get("violent_weight", 2.0),
+            "property": safety_params.get("property_weight", 1.0),
+            "other": safety_params.get("other_weight", 0.5),
         }
 
         tqdm.pandas(desc="Crime")
@@ -333,8 +383,8 @@ class LocationAnalyzer:
                 r.lat,
                 r.lon,
                 weights=weights,
-                density_scale=safety_params.get('density_scale', 1000.0),
-                score_scale=safety_params.get('score_scale', 10.0),
+                density_scale=safety_params.get("density_scale", 1000.0),
+                score_scale=safety_params.get("score_scale", 10.0),
             ),
             axis=1,
         )
@@ -342,29 +392,33 @@ class LocationAnalyzer:
         crime_df = pd.DataFrame(crime_stats.tolist())
         df = pd.concat([df, crime_df], axis=1)
 
-        cost_per_mile = self.transportation_config.get('driving', {}).get('cost_per_mile', 0.65)
+        cost_per_mile = self.transportation_config.get("driving", {}).get(
+            "cost_per_mile", 0.65
+        )
         weights_cfg = self.weights_config
 
-        travel_score = (1.0 - df['weekly_minutes'] / 3000.0).clip(lower=0.0)
-        monthly_cost = df['drive_monthly_miles'] * cost_per_mile + df['transit_monthly_cost']
+        travel_score = (1.0 - df["weekly_minutes"] / 3000.0).clip(lower=0.0)
+        monthly_cost = (
+            df["drive_monthly_miles"] * cost_per_mile + df["transit_monthly_cost"]
+        )
         cost_score = (1.0 - monthly_cost / 1000.0).clip(lower=0.0)
-        safety_score_comp = (1.0 - df['crime_score']).clip(lower=0.0)
+        safety_score_comp = (1.0 - df["crime_score"]).clip(lower=0.0)
 
         overall = (
-            travel_score * weights_cfg.get('travel_time', 0.4)
-            + cost_score * weights_cfg.get('travel_cost', 0.3)
-            + safety_score_comp * weights_cfg.get('safety', 0.3)
+            travel_score * weights_cfg.get("travel_time", 0.4)
+            + cost_score * weights_cfg.get("travel_cost", 0.3)
+            + safety_score_comp * weights_cfg.get("safety", 0.3)
         )
 
         from .apis.crime_data import score_to_grade
 
-        df['overall'] = overall
-        df['grade'] = df['overall'].apply(lambda x: score_to_grade(1.0 - x))
-        df['rank_percentile'] = df['overall'].rank(pct=True) * 100
+        df["overall"] = overall
+        df["grade"] = df["overall"].apply(lambda x: score_to_grade(1.0 - x))
+        df["rank_percentile"] = df["overall"].rank(pct=True) * 100
 
         analysis_results = []
         for _, row in df.iterrows():
-            point_routes = route_data.get('routes', {}).get(row.point_id, {})
+            point_routes = route_data.get("routes", {}).get(row.point_id, {})
             dest_map: Dict[str, Dict[str, DestinationAnalysis]] = {}
             if not dest_meta.empty:
                 for dest_addr, w_trips in weekly_map.items():
@@ -375,21 +429,25 @@ class LocationAnalyzer:
                         continue
                     meta = dest_meta.loc[dest_addr]
                     m_trips = monthly_map.get(dest_addr, 0)
-                    avg_minutes = route['duration_seconds'] / 60
+                    avg_minutes = route["duration_seconds"] / 60
                     analysis = DestinationAnalysis(
                         weekly_trips=int(round(w_trips)),
                         monthly_trips=int(round(m_trips)),
                         avg_travel_time=avg_minutes,
                         total_weekly_time=avg_minutes * w_trips,
-                        routes=[Route(
-                            departure_time=meta['departure_time'],
-                            arrival_time=meta['departure_time'],
-                            mode='driving',
-                            duration=int(avg_minutes),
-                            distance=route['distance_miles'],
-                        )],
+                        routes=[
+                            Route(
+                                departure_time=meta["departure_time"],
+                                arrival_time=meta["departure_time"],
+                                mode="driving",
+                                duration=int(avg_minutes),
+                                distance=route["distance_miles"],
+                            )
+                        ],
                     )
-                    dest_map.setdefault(meta['category'], {})[meta['destination_name']] = analysis
+                    dest_map.setdefault(meta["category"], {})[
+                        meta["destination_name"]
+                    ] = analysis
 
             travel = TravelAnalysis(
                 total_weekly_minutes=int(round(row.weekly_minutes)),
@@ -399,7 +457,9 @@ class LocationAnalyzer:
 
             cost = CostAnalysis(
                 weekly_totals=CostTotals(0.0, 0.0, 0.0, 0.0),
-                monthly_totals=CostTotals(row.drive_monthly_miles, 0.0, 0.0, row.transit_monthly_cost),
+                monthly_totals=CostTotals(
+                    row.drive_monthly_miles, 0.0, 0.0, row.transit_monthly_cost
+                ),
                 breakdown_by_destination={},
             )
 
@@ -411,18 +471,18 @@ class LocationAnalyzer:
                 property_crimes=row.property_crimes,
                 other_crimes=row.other_crimes,
                 crime_types={
-                    'violent': row.violent_crimes,
-                    'property': row.property_crimes,
-                    'other': row.other_crimes,
+                    "violent": row.violent_crimes,
+                    "property": row.property_crimes,
+                    "other": row.other_crimes,
                 },
             )
 
             comp = CompositeScore(
                 overall=row.overall,
                 components={
-                    'travel_time': travel_score.loc[_],
-                    'travel_cost': cost_score.loc[_],
-                    'safety': safety_score_comp.loc[_],
+                    "travel_time": travel_score.loc[_],
+                    "travel_cost": cost_score.loc[_],
+                    "safety": safety_score_comp.loc[_],
                 },
                 grade=row.grade,
                 rank_percentile=int(row.rank_percentile),
@@ -430,7 +490,9 @@ class LocationAnalyzer:
 
             analysis_results.append(
                 GridPointAnalysis(
-                    location=Location(lat=row.lat, lon=row.lon, address=f"{row.lat},{row.lon}"),
+                    location=Location(
+                        lat=row.lat, lon=row.lon, address=f"{row.lat},{row.lon}"
+                    ),
                     travel_analysis=travel,
                     cost_analysis=cost,
                     safety_analysis=safety,
@@ -447,11 +509,11 @@ class LocationAnalyzer:
         monthly_freq: Dict[str, int],
     ) -> CostAnalysis:
         """Calculate transportation cost analysis for a grid point."""
-        cost_per_mile = (
-            self.transportation_config.get("driving", {}).get("cost_per_mile", 0.65)
+        cost_per_mile = self.transportation_config.get("driving", {}).get(
+            "cost_per_mile", 0.65
         )
-        transit_fare = (
-            self.transportation_config.get("transit", {}).get("base_fare", 2.75)
+        transit_fare = self.transportation_config.get("transit", {}).get(
+            "base_fare", 2.75
         )
         modes = self.transportation_config.get("modes", ["driving"])
 
@@ -478,7 +540,11 @@ class LocationAnalyzer:
 
             breakdown[dest] = CostTotals(drive_m, 0.0, 0.0, trans_m)
 
-        return CostAnalysis(weekly_totals=weekly, monthly_totals=monthly, breakdown_by_destination=breakdown)
+        return CostAnalysis(
+            weekly_totals=weekly,
+            monthly_totals=monthly,
+            breakdown_by_destination=breakdown,
+        )
 
     def _calculate_composite_score(
         self,
@@ -488,11 +554,14 @@ class LocationAnalyzer:
     ) -> CompositeScore:
         """Combine component scores into a single composite score."""
         weights = self.weights_config
-        cost_per_mile = (
-            self.transportation_config.get("driving", {}).get("cost_per_mile", 0.65)
+        cost_per_mile = self.transportation_config.get("driving", {}).get(
+            "cost_per_mile", 0.65
         )
 
-        monthly_cost = cost.monthly_totals.driving_miles * cost_per_mile + cost.monthly_totals.transit_cost
+        monthly_cost = (
+            cost.monthly_totals.driving_miles * cost_per_mile
+            + cost.monthly_totals.transit_cost
+        )
 
         travel_score = max(0.0, 1.0 - travel.total_weekly_minutes / 3000.0)
         cost_score = max(0.0, 1.0 - monthly_cost / 1000.0)
@@ -518,115 +587,127 @@ class LocationAnalyzer:
             grade=grade,
             rank_percentile=0,
         )
-    
-    def _compute_regional_statistics(self, analysis_results: List[Any]) -> RegionalStatistics:
+
+    def _compute_regional_statistics(
+        self, analysis_results: List[Any]
+    ) -> RegionalStatistics:
         """
         Compute regional statistics from analysis results.
-        
+
         Args:
             analysis_results: List of grid point analyses
-            
+
         Returns:
             Regional statistics summary
         """
         if not analysis_results:
             return RegionalStatistics()
 
-        travel_times = [p.travel_analysis.total_weekly_minutes for p in analysis_results]
+        travel_times = [
+            p.travel_analysis.total_weekly_minutes for p in analysis_results
+        ]
         crime_scores = [p.safety_analysis.crime_score for p in analysis_results]
         comp_scores = [p.composite_score.overall for p in analysis_results]
 
-        best = sorted(analysis_results, key=lambda p: p.composite_score.overall, reverse=True)[:5]
+        best = sorted(
+            analysis_results, key=lambda p: p.composite_score.overall, reverse=True
+        )[:5]
         best_locations = [
             {
-                'lat': b.location.lat,
-                'lon': b.location.lon,
-                'score': b.composite_score.overall,
+                "lat": b.location.lat,
+                "lon": b.location.lon,
+                "score": b.composite_score.overall,
             }
             for b in best
         ]
 
         return RegionalStatistics(
             travel_time={
-                'min': min(travel_times),
-                'max': max(travel_times),
-                'avg': sum(travel_times) / len(travel_times),
+                "min": min(travel_times),
+                "max": max(travel_times),
+                "avg": sum(travel_times) / len(travel_times),
             },
             safety={
-                'min': min(crime_scores),
-                'max': max(crime_scores),
-                'avg': sum(crime_scores) / len(crime_scores),
+                "min": min(crime_scores),
+                "max": max(crime_scores),
+                "avg": sum(crime_scores) / len(crime_scores),
             },
             composite={
-                'min': min(comp_scores),
-                'max': max(comp_scores),
-                'avg': sum(comp_scores) / len(comp_scores),
+                "min": min(comp_scores),
+                "max": max(comp_scores),
+                "avg": sum(comp_scores) / len(comp_scores),
             },
             best_locations=best_locations,
         )
-    
+
     def _create_metadata(self) -> AnalysisMetadata:
         """Create analysis metadata."""
         from datetime import datetime
-        
+
         grid_info = self.grid.get_grid_info()
-        
+
         return AnalysisMetadata(
             generated=datetime.now().isoformat(),
-            grid_size=self.analysis_config['grid_size'],
-            total_points=grid_info['total_points'],
-            center_point=grid_info['center_point'],
-            bounds=grid_info['bounds']
+            grid_size=self.analysis_config["grid_size"],
+            total_points=grid_info["total_points"],
+            center_point=grid_info["center_point"],
+            bounds=grid_info["bounds"],
         )
-    
+
     def generate_output(self, results: AnalysisResults, output_path: str) -> None:
         """
         Generate output visualization.
-        
+
         Args:
             results: Analysis results
             output_path: Path for output file
         """
-        output_format = self.output_config.get('output_format', 'html')
-        
-        if output_format in ('html', 'both'):
+        output_format = self.output_config.get("output_format", "html")
+
+        if output_format in ("html", "both"):
             self._generate_html_output(results, output_path)
-        
-        if output_format in ('json', 'both'):
+
+        if output_format in ("json", "both"):
             self._generate_json_output(results, output_path)
-    
+
     def _generate_html_output(self, results: AnalysisResults, output_path: str) -> None:
         """Generate HTML dashboard output."""
         from dataclasses import asdict
         from .visualization.dashboard import generate_interactive_map
 
         try:
-            html_path = output_path if output_path.endswith('.html') else f"{output_path}.html"
+            html_path = (
+                output_path if output_path.endswith(".html") else f"{output_path}.html"
+            )
             generate_interactive_map(asdict(results), html_path)
             self.logger.info(f"HTML output generated: {html_path}")
-            
+
         except Exception as e:
             self.logger.error(f"Error generating HTML output: {e}")
             raise
-    
+
     def _generate_json_output(self, results: AnalysisResults, output_path: str) -> None:
         """Generate JSON data export."""
         from dataclasses import asdict
         from .visualization.dashboard import create_data_export
 
         try:
-            json_path = output_path.replace('.html', '.json') if output_path.endswith('.html') else f"{output_path}.json"
+            json_path = (
+                output_path.replace(".html", ".json")
+                if output_path.endswith(".html")
+                else f"{output_path}.json"
+            )
             create_data_export(asdict(results), json_path)
             self.logger.info(f"JSON output generated: {json_path}")
-            
+
         except Exception as e:
             self.logger.error(f"Error generating JSON output: {e}")
             raise
-    
+
     def _create_placeholder_html(self, results: AnalysisResults) -> str:
         """Create placeholder HTML output for testing."""
         metadata = results.analysis_metadata
-        
+
         return f"""<!DOCTYPE html>
 <html lang="en">
 <head>

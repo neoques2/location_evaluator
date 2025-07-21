@@ -1,6 +1,7 @@
 """
 Visualization Module for Location Analysis
 """
+
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Any, Tuple
@@ -13,35 +14,37 @@ from src.analysis.grid_analysis import GridAnalysisResult
 
 class MapVisualizer:
     """Creates interactive map visualizations for location analysis."""
-    
+
     def __init__(self):
         self.colorscale = AnalysisConstants.COLORSCALE
         self.target_color = AnalysisConstants.TARGET_COLOR
         self.grid_opacity = AnalysisConstants.GRID_OPACITY
         self.contour_opacity = AnalysisConstants.CONTOUR_OPACITY
-    
-    def calculate_map_bounds(self, grid_df: pd.DataFrame, targets: List[Dict[str, Any]]) -> Tuple[float, float]:
+
+    def calculate_map_bounds(
+        self, grid_df: pd.DataFrame, targets: List[Dict[str, Any]]
+    ) -> Tuple[float, float]:
         """Calculate optimal map center coordinates."""
         all_lats = list(grid_df["lat"]) + [t["lat"] for t in targets]
         all_lons = list(grid_df["lon"]) + [t["lon"] for t in targets]
-        
+
         center_lat = (min(all_lats) + max(all_lats)) / 2
         center_lon = (min(all_lons) + max(all_lons)) / 2
-        
+
         return center_lat, center_lon
-    
+
     def create_main_map(self, analysis_result: GridAnalysisResult) -> go.Figure:
         """Create main interactive map with grid points and targets."""
         grid_df = analysis_result.grid_df
         targets = analysis_result.successful_targets
         config = analysis_result.analysis_config
-        
+
         # Calculate map bounds
         center_lat, center_lon = self.calculate_map_bounds(grid_df, targets)
-        
+
         # Create figure
         fig = go.Figure()
-        
+
         # Add density layer
         fig.add_trace(
             go.Densitymapbox(
@@ -56,7 +59,7 @@ class MapVisualizer:
                 showscale=False,
             )
         )
-        
+
         # Add grid points
         fig.add_trace(
             go.Scattermapbox(
@@ -68,9 +71,7 @@ class MapVisualizer:
                     color=grid_df["total_weekly_travel_time"],
                     colorscale=self.colorscale,
                     colorbar=dict(
-                        title="Weekly travel time (min)", 
-                        thickness=15, 
-                        len=0.7
+                        title="Weekly travel time (min)", thickness=15, len=0.7
                     ),
                     opacity=self.grid_opacity,
                 ),
@@ -86,7 +87,7 @@ class MapVisualizer:
                 name="Grid points",
             )
         )
-        
+
         # Add target locations
         fig.add_trace(
             go.Scattermapbox(
@@ -102,13 +103,15 @@ class MapVisualizer:
                 hovertext=[t["name"] for t in targets],
             )
         )
-        
+
         # Configure layout
-        target_list = " | ".join([
-            f"{i+1}. {t['name'].replace('Movement ', 'Mvmt ')}"
-            for i, t in enumerate(targets)
-        ])
-        
+        target_list = " | ".join(
+            [
+                f"{i+1}. {t['name'].replace('Movement ', 'Mvmt ')}"
+                for i, t in enumerate(targets)
+            ]
+        )
+
         fig.update_layout(
             title={
                 "text": f"{config.analysis_name} - Interactive Map<br>"
@@ -135,20 +138,27 @@ class MapVisualizer:
                 borderwidth=1,
             ),
         )
-        
+
         return fig
-    
-    def create_target_annotation(self, targets: List[Dict[str, Any]], schedule_info: Dict[str, str]) -> Dict[str, Any]:
+
+    def create_target_annotation(
+        self, targets: List[Dict[str, Any]], schedule_info: Dict[str, str]
+    ) -> Dict[str, Any]:
         """Create annotation box with target information."""
-        target_text = f"<b>{AnalysisConstants.TARGET_EMOJI} Targets:</b><br>" + "<br>".join([
-            f"{i+1}. {t['name']}<br>   📍 ({t['lat']:.4f}, {t['lon']:.4f})"
-            for i, t in enumerate(targets)
-        ])
-        
-        schedule_text = "<br><br><b>📅 Weekly Schedule:</b><br>" + "<br>".join([
-            f"• {name}: {schedule}" for name, schedule in schedule_info.items()
-        ])
-        
+        target_text = (
+            f"<b>{AnalysisConstants.TARGET_EMOJI} Targets:</b><br>"
+            + "<br>".join(
+                [
+                    f"{i+1}. {t['name']}<br>   📍 ({t['lat']:.4f}, {t['lon']:.4f})"
+                    for i, t in enumerate(targets)
+                ]
+            )
+        )
+
+        schedule_text = "<br><br><b>📅 Weekly Schedule:</b><br>" + "<br>".join(
+            [f"• {name}: {schedule}" for name, schedule in schedule_info.items()]
+        )
+
         return dict(
             text=target_text + schedule_text,
             showarrow=False,
@@ -167,12 +177,12 @@ class MapVisualizer:
 
 class SupportingPlotsVisualizer:
     """Creates supporting data visualization plots."""
-    
+
     def create_supporting_plots(self, analysis_result: GridAnalysisResult) -> go.Figure:
         """Create supporting plots figure with histograms and charts."""
         grid_df = analysis_result.grid_df
         config = analysis_result.analysis_config
-        
+
         # Create subplots
         fig = make_subplots(
             rows=1,
@@ -182,12 +192,10 @@ class SupportingPlotsVisualizer:
                 "Weekly Schedule Impact by Destination",
                 "Distance vs Travel Time Relationship",
             ],
-            specs=[
-                [{"type": "histogram"}, {"type": "bar"}, {"type": "scatter"}]
-            ],
+            specs=[[{"type": "histogram"}, {"type": "bar"}, {"type": "scatter"}]],
             horizontal_spacing=0.1,
         )
-        
+
         # Plot 1: Histogram of average trip times
         fig.add_trace(
             go.Histogram(
@@ -197,9 +205,10 @@ class SupportingPlotsVisualizer:
                 name="Trip Time Distribution",
                 showlegend=False,
             ),
-            row=1, col=1,
+            row=1,
+            col=1,
         )
-        
+
         # Plot 2: Bar chart showing weekly schedule impact
         location_weekly_times = {}
         for _, point in grid_df.iterrows():
@@ -209,13 +218,13 @@ class SupportingPlotsVisualizer:
                 if dest not in location_weekly_times:
                     location_weekly_times[dest] = []
                 location_weekly_times[dest].append(weekly_time)
-        
+
         dest_names = [
             name.replace("Movement ", "Mvmt ").replace("Climbing", "Climb")
             for name in location_weekly_times.keys()
         ]
         avg_weekly_times = [np.mean(times) for times in location_weekly_times.values()]
-        
+
         fig.add_trace(
             go.Bar(
                 x=dest_names,
@@ -224,9 +233,10 @@ class SupportingPlotsVisualizer:
                 name="Avg Weekly Time",
                 showlegend=False,
             ),
-            row=1, col=2,
+            row=1,
+            col=2,
         )
-        
+
         # Plot 3: Distance vs Time scatter
         distances = []
         times = []
@@ -238,26 +248,22 @@ class SupportingPlotsVisualizer:
                 destinations_scatter.append(
                     route["destination"].replace("Movement ", "Mvmt ")
                 )
-        
+
         fig.add_trace(
             go.Scatter(
                 x=distances,
                 y=times,
                 mode="markers",
-                marker=dict(
-                    color=distances, 
-                    colorscale="Viridis", 
-                    opacity=0.7, 
-                    size=6
-                ),
+                marker=dict(color=distances, colorscale="Viridis", opacity=0.7, size=6),
                 text=destinations_scatter,
                 hovertemplate="<b>%{text}</b><br>Distance: %{x:.1f} mi<br>Time: %{y:.1f} min<extra></extra>",
                 name="Routes",
                 showlegend=False,
             ),
-            row=1, col=3,
+            row=1,
+            col=3,
         )
-        
+
         # Configure layout
         fig.update_layout(
             title={
@@ -269,7 +275,7 @@ class SupportingPlotsVisualizer:
             width=AnalysisConstants.MAP_WIDTH,
             showlegend=False,
         )
-        
+
         # Update axis labels
         fig.update_xaxes(title_text="Average Trip Time (min)", row=1, col=1)
         fig.update_yaxes(title_text="Frequency", row=1, col=1)
@@ -277,36 +283,35 @@ class SupportingPlotsVisualizer:
         fig.update_yaxes(title_text="Avg Weekly Time (min)", row=1, col=2)
         fig.update_xaxes(title_text="Distance (miles)", row=1, col=3)
         fig.update_yaxes(title_text="Travel Time (min)", row=1, col=3)
-        
+
         return fig
 
 
 class AnalysisVisualizer:
     """Main visualization coordinator for location analysis."""
-    
+
     def __init__(self):
         self.map_visualizer = MapVisualizer()
         self.supporting_visualizer = SupportingPlotsVisualizer()
-    
+
     def create_complete_visualization(
-        self, 
-        analysis_result: GridAnalysisResult,
-        schedule_info: Dict[str, str]
+        self, analysis_result: GridAnalysisResult, schedule_info: Dict[str, str]
     ) -> Tuple[go.Figure, go.Figure]:
         """Create complete visualization with main map and supporting plots."""
         print(f"{AnalysisConstants.ART_EMOJI} Creating interactive visualization...")
-        
+
         # Create main map
         main_fig = self.map_visualizer.create_main_map(analysis_result)
-        
+
         # Add target annotation
         annotation = self.map_visualizer.create_target_annotation(
-            analysis_result.successful_targets, 
-            schedule_info
+            analysis_result.successful_targets, schedule_info
         )
         main_fig.update_layout(annotations=[annotation])
-        
+
         # Create supporting plots
-        supporting_fig = self.supporting_visualizer.create_supporting_plots(analysis_result)
-        
+        supporting_fig = self.supporting_visualizer.create_supporting_plots(
+            analysis_result
+        )
+
         return main_fig, supporting_fig

@@ -11,6 +11,7 @@ from datetime import datetime
 @dataclass
 class Location:
     """Represents a geographic location."""
+
     lat: float
     lon: float
     address: str
@@ -21,6 +22,7 @@ class Location:
 @dataclass
 class Route:
     """Represents a single route calculation."""
+
     departure_time: str
     arrival_time: str
     mode: str  # driving, walking, transit, biking
@@ -32,6 +34,7 @@ class Route:
 @dataclass
 class DestinationAnalysis:
     """Analysis for a specific destination."""
+
     weekly_trips: int
     monthly_trips: int
     avg_travel_time: float  # minutes
@@ -42,14 +45,18 @@ class DestinationAnalysis:
 @dataclass
 class TravelAnalysis:
     """Complete travel analysis for a location."""
+
     total_weekly_minutes: int
     total_monthly_minutes: int
-    destinations: Dict[str, Dict[str, DestinationAnalysis]] = field(default_factory=dict)
+    destinations: Dict[str, Dict[str, DestinationAnalysis]] = field(
+        default_factory=dict
+    )
 
 
 @dataclass
 class CostTotals:
     """Transportation cost totals."""
+
     driving_miles: float
     walking_miles: float
     biking_miles: float
@@ -59,6 +66,7 @@ class CostTotals:
 @dataclass
 class CostAnalysis:
     """Complete cost analysis for a location."""
+
     weekly_totals: CostTotals
     monthly_totals: CostTotals
     breakdown_by_destination: Dict[str, CostTotals] = field(default_factory=dict)
@@ -67,6 +75,7 @@ class CostAnalysis:
 @dataclass
 class SafetyAnalysis:
     """Safety analysis for a location."""
+
     crime_score: float  # 0-1 scale, lower is safer
     nearby_incidents: int  # within radius
     safety_grade: str  # A+ to F scale
@@ -79,6 +88,7 @@ class SafetyAnalysis:
 @dataclass
 class CompositeScore:
     """Composite scoring for a location."""
+
     overall: float  # 0-1 scale, higher is better
     components: Dict[str, float] = field(default_factory=dict)
     grade: str = "C"
@@ -88,6 +98,7 @@ class CompositeScore:
 @dataclass
 class GridPointAnalysis:
     """Complete analysis for a single grid point."""
+
     location: Location
     travel_analysis: TravelAnalysis
     cost_analysis: CostAnalysis
@@ -98,6 +109,7 @@ class GridPointAnalysis:
 @dataclass
 class CacheInfo:
     """Cache metadata information."""
+
     created: str  # ISO datetime
     expires: str  # ISO datetime
     grid_point: Dict[str, float]  # lat, lon
@@ -109,6 +121,7 @@ class CacheInfo:
 @dataclass
 class RouteCache:
     """Cached route data structure."""
+
     cache_info: CacheInfo
     destinations: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
@@ -116,6 +129,7 @@ class RouteCache:
 @dataclass
 class AnalysisMetadata:
     """Metadata for the complete analysis."""
+
     generated: str  # ISO datetime
     grid_size: float  # miles
     total_points: int
@@ -126,6 +140,7 @@ class AnalysisMetadata:
 @dataclass
 class RegionalStatistics:
     """Regional statistics summary."""
+
     travel_time: Dict[str, float] = field(default_factory=dict)
     cost: Dict[str, float] = field(default_factory=dict)
     safety: Dict[str, float] = field(default_factory=dict)
@@ -136,6 +151,7 @@ class RegionalStatistics:
 @dataclass
 class AnalysisResults:
     """Complete analysis results."""
+
     analysis_metadata: AnalysisMetadata
     grid_points: List[GridPointAnalysis]
     regional_statistics: RegionalStatistics
