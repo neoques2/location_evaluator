@@ -165,7 +165,6 @@ def show_analysis_plan(config: Dict[str, Any], output_path: str) -> None:
     print(f"\nScoring Weights:")
     print(f"  Travel Time: {weights['travel_time']:.1%}")
     print(f"  Travel Cost: {weights['travel_cost']:.1%}")
-    print(f"  Safety: {weights['safety']:.1%}")
 
     # Output configuration
     print(f"\nOutput:")

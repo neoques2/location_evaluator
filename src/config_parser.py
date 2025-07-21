@@ -392,18 +392,6 @@ class ConfigParser:
             if not isinstance(bs, int) or bs <= 0:
                 raise ConfigValidationError("OSRM batch_size must be positive integer")
 
-        if "fbi_crime" not in apis:
-            raise ConfigValidationError("API config missing fbi_crime section")
-
-        fbi_cfg = apis["fbi_crime"]
-        if "base_url" not in fbi_cfg:
-            raise ConfigValidationError("FBI crime config missing base_url")
-
-        if "timeout" in fbi_cfg and (
-            not isinstance(fbi_cfg["timeout"], int) or fbi_cfg["timeout"] <= 0
-        ):
-            raise ConfigValidationError("FBI crime timeout must be positive integer")
-
     def _check_api_connectivity(self, apis: Dict[str, Any]) -> None:
         """Check that API endpoints are reachable."""
         if os.getenv("LE_SKIP_NETWORK") == "1":
@@ -412,13 +400,9 @@ class ConfigParser:
         if osrm_url and not check_network_connectivity(osrm_url):
             raise ConfigValidationError(f"Cannot reach OSRM server at {osrm_url}")
 
-        fbi_url = apis.get("fbi_crime", {}).get("base_url")
-        if fbi_url and not check_network_connectivity(fbi_url):
-            raise ConfigValidationError(f"Cannot reach FBI API at {fbi_url}")
-
     def _validate_weights_config(self, weights: Dict[str, Any]) -> None:
         """Validate weights configuration."""
-        required_weights = ["travel_time", "travel_cost", "safety"]
+        required_weights = ["travel_time", "travel_cost"]
 
         for weight in required_weights:
             if weight not in weights:
@@ -432,24 +416,6 @@ class ConfigParser:
         total = sum(weights[w] for w in required_weights)
         if abs(total - 1.0) > 0.001:
             raise ConfigValidationError(f"Weights must sum to 1.0, got {total}")
-
-        # Optional safety parameter calibration
-        params = weights.get("safety_parameters", {})
-        if params:
-            for field in [
-                "violent_weight",
-                "property_weight",
-                "other_weight",
-                "density_scale",
-                "score_scale",
-            ]:
-                if field not in params:
-                    raise ConfigValidationError(f"Missing safety parameter: {field}")
-                val = params[field]
-                if not isinstance(val, (int, float)) or val <= 0:
-                    raise ConfigValidationError(
-                        f"Safety parameter {field} must be positive number"
-                    )
 
     def _validate_output_config(self, output: Dict[str, Any]) -> None:
         """Validate output configuration."""

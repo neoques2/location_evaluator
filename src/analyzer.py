@@ -24,14 +24,12 @@ from .models.data_structures import (
     CostTotals,
     CostAnalysis,
     TravelAnalysis,
-    SafetyAnalysis,
     CompositeScore,
     DestinationAnalysis,
     Route,
     GridPointAnalysis,
     Location,
 )
-from .apis.osrm import OSRMClient
 from .apis.cache import get_cached_route, save_cached_route
 
 
@@ -275,14 +273,12 @@ class LocationAnalyzer:
         Returns:
             List of grid point analyses
         """
-        from .apis.crime_data import get_crime_data
 
         if not isinstance(route_data, dict):
             raise ValueError("route_data must be a dict")
 
         grid_df = self.grid.get_grid_dataframe()
         schedules_df = pd.DataFrame(self.schedules or [])
-        safety_params = self.weights_config.get("safety_parameters", {})
 
         if schedules_df.empty:
             weekly_map = pd.Series(dtype=float)
@@ -371,27 +367,6 @@ class LocationAnalyzer:
 
             df = grid_df.merge(agg, on="point_id", how="left").fillna(0)
 
-        weights = {
-            "violent": safety_params.get("violent_weight", 2.0),
-            "property": safety_params.get("property_weight", 1.0),
-            "other": safety_params.get("other_weight", 0.5),
-        }
-
-        tqdm.pandas(desc="Crime")
-        crime_stats = df.progress_apply(
-            lambda r: get_crime_data(
-                r.lat,
-                r.lon,
-                weights=weights,
-                density_scale=safety_params.get("density_scale", 1000.0),
-                score_scale=safety_params.get("score_scale", 10.0),
-            ),
-            axis=1,
-        )
-
-        crime_df = pd.DataFrame(crime_stats.tolist())
-        df = pd.concat([df, crime_df], axis=1)
-
         cost_per_mile = self.transportation_config.get("driving", {}).get(
             "cost_per_mile", 0.65
         )
@@ -402,18 +377,13 @@ class LocationAnalyzer:
             df["drive_monthly_miles"] * cost_per_mile + df["transit_monthly_cost"]
         )
         cost_score = (1.0 - monthly_cost / 1000.0).clip(lower=0.0)
-        safety_score_comp = (1.0 - df["crime_score"]).clip(lower=0.0)
 
-        overall = (
-            travel_score * weights_cfg.get("travel_time", 0.4)
-            + cost_score * weights_cfg.get("travel_cost", 0.3)
-            + safety_score_comp * weights_cfg.get("safety", 0.3)
-        )
-
-        from .apis.crime_data import score_to_grade
+        overall = travel_score * weights_cfg.get(
+            "travel_time", 0.5
+        ) + cost_score * weights_cfg.get("travel_cost", 0.5)
 
         df["overall"] = overall
-        df["grade"] = df["overall"].apply(lambda x: score_to_grade(1.0 - x))
+        df["grade"] = "N/A"
         df["rank_percentile"] = df["overall"].rank(pct=True) * 100
 
         analysis_results = []
@@ -463,26 +433,11 @@ class LocationAnalyzer:
                 breakdown_by_destination={},
             )
 
-            safety = SafetyAnalysis(
-                crime_score=row.crime_score,
-                nearby_incidents=row.incident_count,
-                safety_grade=row.safety_grade,
-                violent_crimes=row.violent_crimes,
-                property_crimes=row.property_crimes,
-                other_crimes=row.other_crimes,
-                crime_types={
-                    "violent": row.violent_crimes,
-                    "property": row.property_crimes,
-                    "other": row.other_crimes,
-                },
-            )
-
             comp = CompositeScore(
                 overall=row.overall,
                 components={
                     "travel_time": travel_score.loc[_],
                     "travel_cost": cost_score.loc[_],
-                    "safety": safety_score_comp.loc[_],
                 },
                 grade=row.grade,
                 rank_percentile=int(row.rank_percentile),
@@ -495,7 +450,6 @@ class LocationAnalyzer:
                     ),
                     travel_analysis=travel,
                     cost_analysis=cost,
-                    safety_analysis=safety,
                     composite_score=comp,
                 )
             )
@@ -550,7 +504,6 @@ class LocationAnalyzer:
         self,
         travel: TravelAnalysis,
         cost: CostAnalysis,
-        safety: SafetyAnalysis,
     ) -> CompositeScore:
         """Combine component scores into a single composite score."""
         weights = self.weights_config
@@ -565,24 +518,17 @@ class LocationAnalyzer:
 
         travel_score = max(0.0, 1.0 - travel.total_weekly_minutes / 3000.0)
         cost_score = max(0.0, 1.0 - monthly_cost / 1000.0)
-        safety_score = max(0.0, 1.0 - safety.crime_score)
+        overall = travel_score * weights.get(
+            "travel_time", 0.5
+        ) + cost_score * weights.get("travel_cost", 0.5)
 
-        overall = (
-            travel_score * weights.get("travel_time", 0.4)
-            + cost_score * weights.get("travel_cost", 0.3)
-            + safety_score * weights.get("safety", 0.3)
-        )
-
-        from .apis.crime_data import score_to_grade
-
-        grade = score_to_grade(1.0 - overall)
+        grade = "N/A"
 
         return CompositeScore(
             overall=overall,
             components={
                 "travel_time": travel_score,
                 "travel_cost": cost_score,
-                "safety": safety_score,
             },
             grade=grade,
             rank_percentile=0,
@@ -606,7 +552,6 @@ class LocationAnalyzer:
         travel_times = [
             p.travel_analysis.total_weekly_minutes for p in analysis_results
         ]
-        crime_scores = [p.safety_analysis.crime_score for p in analysis_results]
         comp_scores = [p.composite_score.overall for p in analysis_results]
 
         best = sorted(
@@ -626,11 +571,6 @@ class LocationAnalyzer:
                 "min": min(travel_times),
                 "max": max(travel_times),
                 "avg": sum(travel_times) / len(travel_times),
-            },
-            safety={
-                "min": min(crime_scores),
-                "max": max(crime_scores),
-                "avg": sum(crime_scores) / len(crime_scores),
             },
             composite={
                 "min": min(comp_scores),
@@ -756,7 +696,6 @@ class LocationAnalyzer:
             <li>✅ Schedule processing</li>
             <li>⏳ Route calculations (OSRM integration)</li>
             <li>⏳ Travel time and cost analysis</li>
-            <li>⏳ Safety scoring (FBI crime data)</li>
             <li>⏳ Interactive visualization</li>
         </ul>
     </div>

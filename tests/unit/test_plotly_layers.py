@@ -27,15 +27,7 @@ def make_dummy_results():
                         "transit_cost": 0,
                     },
                 },
-                "safety_analysis": {
-                    "crime_score": 0.1,
-                    "nearby_incidents": 1,
-                    "safety_grade": "A",
-                    "violent_crimes": 1,
-                    "property_crimes": 0,
-                    "other_crimes": 0,
-                    "crime_types": {},
-                },
+                "safety_analysis": {},
                 "composite_score": {
                     "overall": 0.9,
                     "components": {
@@ -57,12 +49,8 @@ def test_main_map_layers():
     expected = [
         "Travel Time",
         "Transportation Cost",
-        "Safety",
-        "Violent Crime",
-        "Property Crime",
-        "Other Crime",
         "Composite Score",
         "Destinations",
     ]
     assert layer_names == expected
-    assert len(fig.data) == 8
+    assert len(fig.data) == 4

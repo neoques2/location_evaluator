@@ -73,19 +73,6 @@ class CostAnalysis:
 
 
 @dataclass
-class SafetyAnalysis:
-    """Safety analysis for a location."""
-
-    crime_score: float  # 0-1 scale, lower is safer
-    nearby_incidents: int  # within radius
-    safety_grade: str  # A+ to F scale
-    violent_crimes: int = 0
-    property_crimes: int = 0
-    other_crimes: int = 0
-    crime_types: Dict[str, float] = field(default_factory=dict)
-
-
-@dataclass
 class CompositeScore:
     """Composite scoring for a location."""
 
@@ -102,7 +89,6 @@ class GridPointAnalysis:
     location: Location
     travel_analysis: TravelAnalysis
     cost_analysis: CostAnalysis
-    safety_analysis: SafetyAnalysis
     composite_score: CompositeScore
 
 
@@ -143,7 +129,6 @@ class RegionalStatistics:
 
     travel_time: Dict[str, float] = field(default_factory=dict)
     cost: Dict[str, float] = field(default_factory=dict)
-    safety: Dict[str, float] = field(default_factory=dict)
     composite: Dict[str, float] = field(default_factory=dict)
     best_locations: List[Dict[str, Any]] = field(default_factory=list)
 
@@ -211,22 +196,11 @@ Grid Point Analysis Output Schema:
       "transit_cost": 119.75
     }
   },
-  "safety_analysis": {
-    "crime_score": 0.23,
-    "crime_types": {
-      "violent": 0.15,
-      "property": 0.31,
-      "other": 0.08
-    },
-    "nearby_incidents": 12,
-    "safety_grade": "B+"
-  },
   "composite_score": {
     "overall": 0.78,
     "components": {
       "travel_time": 0.82,
-      "travel_cost": 0.71,
-      "safety": 0.77
+      "travel_cost": 0.71
     },
     "grade": "B+",
     "rank_percentile": 78
@@ -291,12 +265,6 @@ Analysis Results Summary Schema:
       "max": 120,
       "avg": 45,
       "median": 42
-    },
-    "safety": {
-      "min": 0.05,
-      "max": 0.85,
-      "avg": 0.34,
-      "median": 0.31
     },
     "best_locations": [
       {

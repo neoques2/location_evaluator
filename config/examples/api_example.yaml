@@ -10,6 +10,3 @@ apis:
     cache: true
     batch_size: 50           # number of coordinate pairs per table request
 
-  fbi_crime:
-    base_url: "https://api.usa.gov/crime/fbi/cde/"
-    timeout: 30
