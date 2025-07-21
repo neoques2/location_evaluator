@@ -32,15 +32,12 @@ def create_summary_stats(analysis_results: Dict[str, Any]) -> go.Figure:
                         ["Travel Time (min)", "Monthly Cost ($)"],
                         [
                             stats["travel_time"]["min"],
-                            stats["cost"]["min"],
                         ],
                         [
                             stats["travel_time"]["max"],
-                            stats["cost"]["max"],
                         ],
                         [
                             stats["travel_time"]["avg"],
-                            stats["cost"]["avg"],
                         ],
                     ],
                     fill_color="white",

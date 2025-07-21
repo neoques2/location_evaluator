@@ -615,16 +615,12 @@ class LocationAnalyzer:
         from dataclasses import asdict
         from .visualization.dashboard import generate_interactive_map
 
-        try:
-            html_path = (
-                output_path if output_path.endswith(".html") else f"{output_path}.html"
-            )
-            generate_interactive_map(asdict(results), html_path)
-            self.logger.info(f"HTML output generated: {html_path}")
+        html_path = (
+            output_path if output_path.endswith(".html") else f"{output_path}.html"
+        )
+        generate_interactive_map(asdict(results), html_path)
+        self.logger.info(f"HTML output generated: {html_path}")
 
-        except Exception as e:
-            self.logger.error(f"Error generating HTML output: {e}")
-            raise
 
     def _generate_json_output(self, results: AnalysisResults, output_path: str) -> None:
         """Generate JSON data export."""
